@@ -13,7 +13,7 @@ const BORDER_COLOR := Color(0.08, 0.08, 0.08)
 const BORDER_WIDTH := 3.0
 
 func _ready() -> void:
-	position = Vector2(200, 150)
+	pass
 
 func _draw() -> void:
 	var fill := ACTIVE_COLOR if is_active else INACTIVE_COLOR
