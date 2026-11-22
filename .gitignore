@@ -1,0 +1,4 @@
+# Godot 4+ specific ignores
+.godot/
+*.dmg
+.DS_Store
