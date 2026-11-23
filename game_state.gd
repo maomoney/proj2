@@ -3,10 +3,10 @@ extends Node
 var should_load_save := false
 const SAVE_PATH := "user://save.json"
 
-func save_game(boxes: Array) -> void:
-	var data := {"boxes": []}
-	for box in boxes:
-		data["boxes"].append({"x": box.position.x, "y": box.position.y, "active": box.is_active})
+func save_game(cards: Array) -> void:
+	var data := {"cards": []}
+	for card in cards:
+		data["cards"].append({"x": card.position.x, "y": card.position.y, "active": card.is_active, "card_id": card.card_id})
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	file.store_string(JSON.stringify(data))
 
@@ -18,8 +18,8 @@ func load_game() -> Array:
 	json.parse(file.get_as_text())
 	var data = json.get_data()
 	var states: Array = []
-	for b in data["boxes"]:
-		states.append({"position": Vector2(b["x"], b["y"]), "active": b["active"]})
+	for c in data["cards"]:
+		states.append({"position": Vector2(c["x"], c["y"]), "active": c["active"], "card_id": c.get("card_id", "")})
 	return states
 
 func has_save() -> bool:
