@@ -1,11 +1,16 @@
 extends Node2D
 
 signal purchased
+signal mouse_entered
+signal mouse_exited
+signal drag_started
+signal drag_ended
 
 var card_size := Vector2(100, 140)
 var card_id: String = ""
 var dragging := false
 var drag_offset := Vector2.ZERO
+var _hovered := false
 
 const CORNER_RADIUS   := 8.0
 const DRAG_THRESHOLD  := 5.0
@@ -18,8 +23,8 @@ const GOLD_COLOR      := Color(0.78, 0.58, 0.05)
 const SEPARATOR_COLOR := Color(0.75, 0.73, 0.68)
 
 const TYPE_COLORS := {
-	"Unit":     Color(0.52, 0.18, 0.80),
-	"Building": Color(0.80, 0.18, 0.18),
+	"Building":     Color(0.52, 0.18, 0.80),
+	"Unit": Color(0.80, 0.18, 0.18),
 	"Tech":     Color(0.18, 0.40, 0.80),
 }
 
@@ -84,6 +89,19 @@ func _draw() -> void:
 	draw_string(font, Vector2(margin, card_size.y - 8.0), "%d g" % cost,
 			HORIZONTAL_ALIGNMENT_RIGHT, text_width, 11, GOLD_COLOR)
 
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		if dragging:
+			return  # don't update hover state while dragging
+		var local   := to_local(event.position)
+		var in_card := Rect2(Vector2.ZERO, card_size).has_point(local)
+		if in_card and not _hovered:
+			_hovered = true
+			mouse_entered.emit()
+		elif not in_card and _hovered:
+			_hovered = false
+			mouse_exited.emit()
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		var local := to_local(event.position)
@@ -95,9 +113,17 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 			dragging = true
 			drag_offset = local
+			drag_started.emit()
 			get_viewport().set_input_as_handled()
 		elif not event.pressed and dragging:
 			dragging = false
+			drag_ended.emit()
+			# Resolve hover state now that drag ended.
+			var local2 := to_local(event.position)
+			var in_card2 := Rect2(Vector2.ZERO, card_size).has_point(local2)
+			if not in_card2 and _hovered:
+				_hovered = false
+				mouse_exited.emit()
 			get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion and dragging:
 		position = event.position - drag_offset
