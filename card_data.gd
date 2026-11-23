@@ -1,12 +1,43 @@
 class_name CardData
 
-const CARDS: Dictionary = {
-	"fireball":       {"name": "Fireball",       "description": "Deal 3 damage to all enemies.",    "type": "Spell"},
-	"iron_shield":    {"name": "Iron Shield",     "description": "Block 5 incoming damage.",         "type": "Defense"},
-	"swift_strike":   {"name": "Swift Strike",    "description": "Attack twice this turn.",          "type": "Attack"},
-	"healing_potion": {"name": "Healing Potion",  "description": "Restore 4 health points.",         "type": "Item"},
-	"thunder_bolt":   {"name": "Thunder Bolt",    "description": "Stun an enemy for 1 turn.",        "type": "Spell"},
-	"battle_cry":     {"name": "Battle Cry",      "description": "Boost attack by 2 this turn.",     "type": "Buff"},
-	"shadow_step":    {"name": "Shadow Step",     "description": "Dodge the next attack.",           "type": "Skill"},
-	"frost_nova":     {"name": "Frost Nova",      "description": "Freeze all enemies briefly.",      "type": "Spell"},
+const UNITS: Dictionary = {
+	"clubman": {
+		"name":        "Clubman",
+		"description": "Stone age melee unit",
+		"cost":        2,
+	},
+	"archer": {
+		"name":        "Archer",
+		"description": "Stone age ranged unit",
+		"cost":        3,
+	},
 }
+
+const BUILDINGS: Dictionary = {
+	"farm": {
+		"name":        "Farm",
+		"description": "Produces food",
+		"cost":        4,
+	},
+}
+
+const TECHS: Dictionary = {
+	"archery": {
+		"name":        "Archery",
+		"description": "Add Archers to shop",
+		"cost":        5,
+	},
+}
+
+static func get_all() -> Dictionary:
+	var all := {}
+	all.merge(UNITS)
+	all.merge(BUILDINGS)
+	all.merge(TECHS)
+	return all
+
+static func get_type(card_id: String) -> String:
+	if UNITS.has(card_id):     return "Unit"
+	if BUILDINGS.has(card_id): return "Building"
+	if TECHS.has(card_id):     return "Tech"
+	return ""
