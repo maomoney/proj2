@@ -113,18 +113,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				return
 			dragging = true
 			drag_offset = local
+			if _hovered:
+				_hovered = false
+				mouse_exited.emit()
 			drag_started.emit()
 			get_viewport().set_input_as_handled()
 		elif not event.pressed and dragging:
 			dragging = false
 			drag_ended.emit()
-			# Resolve hover state now that drag ended.
-			var local2 := to_local(event.position)
-			var in_card2 := Rect2(Vector2.ZERO, card_size).has_point(local2)
-			if not in_card2 and _hovered:
-				_hovered = false
-				mouse_exited.emit()
-			get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion and dragging:
 		position = event.position - drag_offset
 		get_viewport().set_input_as_handled()

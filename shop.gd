@@ -17,12 +17,14 @@ const SHOP_SCALE    := 1.2
 const SHOP_LIFT 	:= 0
 const SHOP_TWEEN_T  := 0.1
 
-var card_count := 5
+var card_count := 10
 var cards: Array[Node2D] = []
 var hand_cards: Array[String] = []
 var hand_nodes: Array[Node2D] = []
 var hand_card_hovered: Node2D = null
-var gold := 20
+var _shop_card_dragging: Node2D = null
+var _hand_card_dragging: Node2D = null
+var gold := 200
 var refresh_cost := REFRESH_COST_INITIAL
 var _top_layer: CanvasLayer
 var _drop_zone: ColorRect
@@ -131,6 +133,7 @@ func _spawn_hand() -> void:
 		n.queue_free()
 	hand_nodes.clear()
 	hand_card_hovered = null
+	_hand_card_dragging = null
 	if hand_cards.is_empty():
 		return
 
@@ -173,12 +176,14 @@ func _connect_shop_hover(card: Node2D) -> void:
 	var card_w: float = card.card_size.x
 	var card_h: float = card.card_size.y
 	card.drag_started.connect(func() -> void:
+		_shop_card_dragging = card
 		get_tree().create_timer(0.2).timeout.connect(func() -> void:
 			if is_instance_valid(card) and card.dragging:
 				_drop_zone.show()
 		)
 	)
 	card.drag_ended.connect(func() -> void:
+		_shop_card_dragging = null
 		_drop_zone.hide()
 		var drop_y: float = card.global_position.y + card_h / 2.0
 		if drop_y >= get_viewport_rect().size.y * 2.0 / 3.0:
@@ -190,6 +195,8 @@ func _connect_shop_hover(card: Node2D) -> void:
 			tw.tween_property(card, "position", origin,      SHOP_TWEEN_T)
 	)
 	card.mouse_entered.connect(func() -> void:
+		if _shop_card_dragging != null and _shop_card_dragging != card:
+			return
 		_lift_card(card)
 		var base  := _shop_card_position(card.get_meta("shop_index") as int)
 		var offset := Vector2(card_w / 2.0 * (1.0 - SHOP_SCALE),
@@ -211,12 +218,14 @@ func _connect_hand_hover(card: Node2D, base_z: int) -> void:
 	var card_w: float = card.card_size.x
 	var card_h: float = card.card_size.y
 	card.drag_started.connect(func() -> void:
+		_hand_card_dragging = card
 		get_tree().create_timer(0.2).timeout.connect(func() -> void:
 			if is_instance_valid(card) and card.dragging:
 				_sell_drop_zone.show()
 		)
 	)
 	card.drag_ended.connect(func() -> void:
+		_hand_card_dragging = null
 		_sell_drop_zone.hide()
 		var drop_y: float = card.global_position.y + card_h / 2.0
 		if drop_y <= get_viewport_rect().size.y / 3.0:
@@ -229,6 +238,8 @@ func _connect_hand_hover(card: Node2D, base_z: int) -> void:
 	)
 	card.mouse_entered.connect(func() -> void:
 		if hand_card_hovered == card:
+			return
+		if _hand_card_dragging != null and _hand_card_dragging != card:
 			return
 		if hand_card_hovered != null:
 			_unhover_hand_card(hand_card_hovered)
