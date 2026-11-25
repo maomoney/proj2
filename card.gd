@@ -11,8 +11,14 @@ var card_id: String = ""
 var dragging := false
 var drag_offset := Vector2.ZERO
 var _hovered := false
+# Draws the sell value (half the cost) above the card. Shop toggles this for hovered/dragged hand cards.
+var show_cost := false:
+	set(value):
+		if show_cost != value:
+			show_cost = value
+			queue_redraw()
 
-const CORNER_RADIUS   := 8.0
+const CORNER_RADIUS   := 6.0
 const DRAG_THRESHOLD  := 5.0
 const BG_COLOR        := Color(0.97, 0.95, 0.90)
 const BORDER_COLOR    := Color(0.25, 0.25, 0.25)
@@ -84,10 +90,11 @@ func _draw() -> void:
 	draw_multiline_string(font, Vector2(margin, 57.0), desc_str,
 			HORIZONTAL_ALIGNMENT_LEFT, text_width, 9, 4, TEXT_COLOR_DIM)
 
-	# Cost
-	var cost: int = data.get("cost", 0)
-	draw_string(font, Vector2(margin, card_size.y - 8.0), "%d g" % cost,
-			HORIZONTAL_ALIGNMENT_RIGHT, text_width, 11, GOLD_COLOR)
+	# Sell value, centered above the card (below would be off-screen for hand cards)
+	if show_cost:
+		var sell_value: int = int(data.get("cost", 0)) / 2
+		draw_string(font, Vector2(0.0, -6.0), "%d g" % sell_value,
+				HORIZONTAL_ALIGNMENT_CENTER, card_size.x, 14, GOLD_COLOR)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
