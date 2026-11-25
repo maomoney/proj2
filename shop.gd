@@ -19,6 +19,11 @@ const HAND_ARC_MAX_DEG  := 40.0  # maximum fan angle in degrees
 const SHOP_SCALE    := 1.1
 const SHOP_LIFT 	:= 0
 const SHOP_TWEEN_T  := 0.1
+const COST_LABEL_OFFSET_Y := 150.0  # below the card's bottom edge (card height 140)
+const COST_LABEL_HEIGHT   := 20.0
+const COST_LABEL_WIDTH    := 50.0   # background rect width, centered under the card
+const COST_LABEL_BG_COLOR := Color(0.12, 0.12, 0.12, 0.85)
+const COST_LABEL_COLOR    := Color(0.78, 0.58, 0.05)
 
 var card_count := 10
 var cards: Array[Node2D] = []
@@ -91,6 +96,7 @@ func _ready() -> void:
 
 func _spawn_cards(count: int = card_count) -> void:
 	for card in cards:
+		_free_cost_label(card)
 		card.queue_free()
 	cards.clear()
 
@@ -132,6 +138,40 @@ func _spawn_cards(count: int = card_count) -> void:
 		card.purchased.connect(_on_card_purchased.bind(card))
 		_connect_shop_hover(card)
 		cards.append(card)
+		_add_cost_label(card)
+
+# Cost labels are separate nodes pinned to the shop slot, so they don't follow drags or hover.
+func _add_cost_label(card: Node2D) -> void:
+	var data: Dictionary = CardData.get_all().get(card.card_id, {})
+	var label := Label.new()
+	label.text = "%d g" % int(data.get("cost", 0))
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	label.size = Vector2(COST_LABEL_WIDTH, COST_LABEL_HEIGHT)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_color_override("font_color", COST_LABEL_COLOR)
+	label.add_theme_font_size_override("font_size", 14)
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = COST_LABEL_BG_COLOR
+	# bg.set_corner_radius_all(4)
+	label.add_theme_stylebox_override("normal", bg)
+	# card.position is its slot at spawn time; cards[] is still filling, so _shop_card_position would be off.
+	label.position = card.position + _cost_label_offset()
+	add_child(label)
+	card.set_meta("cost_label", label)
+
+func _cost_label_position(index: int) -> Vector2:
+	return _shop_card_position(index) + _cost_label_offset()
+
+func _cost_label_offset() -> Vector2:
+	return Vector2((CARD_WIDTH - COST_LABEL_WIDTH) / 2.0, COST_LABEL_OFFSET_Y)
+
+func _free_cost_label(card: Node2D) -> void:
+	if card.has_meta("cost_label"):
+		var label: Label = card.get_meta("cost_label")
+		if is_instance_valid(label):
+			label.queue_free()
+		card.remove_meta("cost_label")
 
 func _spawn_hand() -> void:
 	for n in hand_nodes:
@@ -276,6 +316,7 @@ func _connect_hand_hover(card: Node2D, base_z: int) -> void:
 			return
 		_hand_card_dragging = card
 		card.rotation = 0.0
+		card.show_cost = true
 		get_tree().create_timer(0.2).timeout.connect(func() -> void:
 			if is_instance_valid(card) and card.dragging:
 				_sell_drop_zone.show()
@@ -284,6 +325,7 @@ func _connect_hand_hover(card: Node2D, base_z: int) -> void:
 	card.drag_ended.connect(func() -> void:
 		_hand_card_dragging = null
 		_sell_drop_zone.hide()
+		card.show_cost = false
 		var drop_y: float = card.global_position.y + card_h / 2.0
 		if drop_y <= get_viewport_rect().size.y / 3.0:
 			_sell_hand_card(card)
@@ -304,6 +346,7 @@ func _connect_hand_hover(card: Node2D, base_z: int) -> void:
 		if hand_card_hovered != null:
 			_unhover_hand_card(hand_card_hovered)
 		hand_card_hovered = card
+		card.show_cost = true
 		_lift_card(card)
 		var idx          := card.get_meta("hand_index") as int
 		var vp           := get_viewport_rect().size
@@ -334,6 +377,8 @@ func _drop_card(card: Node2D) -> void:
 		card.global_position = global
 
 func _unhover_hand_card(card: Node2D) -> void:
+	if not card.dragging:
+		card.show_cost = false
 	_drop_card(card)
 	var idx  := card.get_meta("hand_index") as int
 	var base := _hand_card_position(idx)
@@ -354,6 +399,8 @@ func _reindex_shop_cards() -> void:
 		var tw := create_tween().set_parallel(true)
 		tw.tween_property(cards[i], "position", target, SHOP_TWEEN_T)
 		tw.tween_property(cards[i], "scale",    Vector2.ONE, SHOP_TWEEN_T)
+		if cards[i].has_meta("cost_label"):
+			tw.tween_property(cards[i].get_meta("cost_label"), "position", _cost_label_position(i), SHOP_TWEEN_T)
 
 func _sell_hand_card(card: Node2D) -> void:
 	var data: Dictionary = CardData.get_all().get(card.card_id, {})
@@ -416,6 +463,7 @@ func _on_card_purchased(card: Node2D) -> void:
 		return
 	_change_gold(-cost)
 	hand_cards.append(card.card_id)
+	_free_cost_label(card)
 	cards.erase(card)
 	card.queue_free()
 	_reindex_shop_cards()
