@@ -6,17 +6,17 @@ const REFRESH_COST_INITIAL = 2
 const REFRESH_COST_INCREMENT = 1
 
 const CARD_WIDTH := 100.0
-const CARD_SPACING    := 120.0
+const CARD_SPACING    := 110.0
 
 const HAND_OVERLAP      := 20.0
-const HAND_SCALE        := 1.75
+const HAND_SCALE        := 1.25
 const HAND_LIFT         := 20.0
 const HAND_TWEEN_T      := 0.1
-const HAND_ARC_RADIUS   := 900.0
+const HAND_ARC_RADIUS   := 1000.0
 const HAND_ARC_SEP_DEG  := 5.0   # degrees between adjacent cards
 const HAND_ARC_MAX_DEG  := 40.0  # maximum fan angle in degrees
 
-const SHOP_SCALE    := 1.2
+const SHOP_SCALE    := 1.1
 const SHOP_LIFT 	:= 0
 const SHOP_TWEEN_T  := 0.1
 
@@ -28,6 +28,8 @@ var hand_card_hovered: Node2D = null
 var _shop_card_dragging: Node2D = null
 var _hand_card_dragging: Node2D = null
 var gold := 200
+var _displayed_gold := 0.0
+var _gold_tween: Tween
 var refresh_cost := REFRESH_COST_INITIAL
 var _top_layer: CanvasLayer
 var _drop_zone: ColorRect
@@ -74,8 +76,7 @@ func _ready() -> void:
 		gold = state.get("gold", gold)
 		hand_cards.assign(state.get("hand_cards", hand_cards))
 		var card_states: Array = state.get("cards", [])
-		card_count = card_states.size() if card_states.size() > 0 else card_count
-		_spawn_cards()
+		_spawn_cards(card_states.size() if card_states.size() > 0 else card_count)
 		for i in cards.size():
 			if i < card_states.size():
 				cards[i].position = card_states[i]["position"]
@@ -85,9 +86,10 @@ func _ready() -> void:
 		_spawn_cards()
 
 	_spawn_hand()
+	_set_gold_display(gold)
 	_update_gold_label()
 
-func _spawn_cards() -> void:
+func _spawn_cards(count: int = card_count) -> void:
 	for card in cards:
 		card.queue_free()
 	cards.clear()
@@ -96,7 +98,7 @@ func _spawn_cards() -> void:
 	var building_ids := CardData.BUILDINGS.keys()
 	var tech_ids     := CardData.TECHS.keys()
 
-	# Build the pool: shuffle all ids, pick card_count with constraints.
+	# Build the pool: shuffle all ids, pick count with constraints.
 	# Constraint 1: at least 1 building.
 	# Constraint 2: no duplicate techs.
 	var pool: Array[String] = []
@@ -104,9 +106,9 @@ func _spawn_cards() -> void:
 	pool.append(building_ids[randi() % building_ids.size()])
 	# Fill remaining slots randomly, rejecting tech duplicates.
 	var used_techs: Dictionary = {}
-	var remaining := card_count - 1
+	var remaining := count - 1
 	var attempts  := 0
-	while pool.size() < card_count and attempts < card_count * 20:
+	while pool.size() < count and attempts < count * 20:
 		attempts += 1
 		var id: String = all_ids[randi() % all_ids.size()]
 		if CardData.get_type(id) == "Tech" and used_techs.has(id):
@@ -117,9 +119,9 @@ func _spawn_cards() -> void:
 	# Shuffle so the building isn't always first.
 	pool.shuffle()
 
-	var total_span := (card_count - 1) * CARD_SPACING + CARD_WIDTH
+	var total_span := (count - 1) * CARD_SPACING + CARD_WIDTH
 	var start_x    := (get_viewport_rect().size.x - total_span) / 2.0
-	for i in card_count:
+	for i in count:
 		var card := Node2D.new()
 		card.set_script(CARD_SCRIPT)
 		card.name    = "Card%d" % i
@@ -356,7 +358,7 @@ func _reindex_shop_cards() -> void:
 func _sell_hand_card(card: Node2D) -> void:
 	var data: Dictionary = CardData.get_all().get(card.card_id, {})
 	var refund: int = data.get("cost", 0) / 2
-	gold += refund
+	_change_gold(refund)
 	var idx: int = card.get_meta("hand_index") as int
 	hand_cards.remove_at(idx)
 	hand_nodes.erase(card)
@@ -376,8 +378,28 @@ func _sell_hand_card(card: Node2D) -> void:
 	_update_gold_label()
 
 func _update_gold_label() -> void:
-	$UI/GoldLabel.text = "Gold: %d" % gold
 	$UI/TitleRow/RefreshButton.text = "Refresh (%dg)" % refresh_cost
+
+# Changes gold and animates the label counting from the old value to the new one.
+func _change_gold(amount: int) -> void:
+	if amount == 0:
+		return
+	gold += amount
+	if _gold_tween:
+		_gold_tween.kill()
+	var label: Label = $UI/GoldLabel
+	var flash := Color(1.0, 0.4, 0.4) if amount < 0 else Color(0.4, 1.0, 0.4)
+	var duration := clampf(absf(amount) * 0.05, 0.25, 0.8)
+	label.modulate = flash
+	_gold_tween = create_tween().set_parallel(true)
+	_gold_tween.tween_method(_set_gold_display, _displayed_gold, float(gold), duration) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_gold_tween.tween_property(label, "modulate", Color.WHITE, duration) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+func _set_gold_display(value: float) -> void:
+	_displayed_gold = value
+	$UI/GoldLabel.text = "Gold: %d" % roundi(value)
 
 func _on_card_purchased(card: Node2D) -> void:
 	var data: Dictionary = CardData.get_all().get(card.card_id, {})
@@ -392,7 +414,7 @@ func _on_card_purchased(card: Node2D) -> void:
 		tw.tween_property(card, "scale",    Vector2.ONE, SHOP_TWEEN_T * 2)
 		tw.tween_property(card, "position", origin,      SHOP_TWEEN_T * 2)
 		return
-	gold -= cost
+	_change_gold(-cost)
 	hand_cards.append(card.card_id)
 	cards.erase(card)
 	card.queue_free()
@@ -403,7 +425,7 @@ func _on_card_purchased(card: Node2D) -> void:
 func _on_refresh_pressed() -> void:
 	if gold < refresh_cost:
 		return
-	gold -= refresh_cost
+	_change_gold(-refresh_cost)
 	refresh_cost += REFRESH_COST_INCREMENT
 	_spawn_cards()
 	_update_gold_label()
