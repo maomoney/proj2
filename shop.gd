@@ -22,10 +22,11 @@ const SHOP_LIFT 	:= 0
 const SHOP_TWEEN_T  := 0.1
 const COST_LABEL_OFFSET_Y := 150.0  # below the card's bottom edge (card height 140)
 const COST_LABEL_HEIGHT   := 20.0
-const COST_LABEL_WIDTH    := 50.0   # background rect width, centered under the card
+const COST_LABEL_WIDTH    := 80.0   # background rect width, centered under the card
 const COST_LABEL_BG_COLOR := Color(0.12, 0.12, 0.12, 0.85)
-const COST_LABEL_COLOR    := Color(0.78, 0.58, 0.05)
+const COST_LABEL_COLOR    := Color(0.949, 0.761, 0.051, 1)
 const COIN_TEXTURE        := preload("res://assets/coin.png")
+const LABEL_FONT          := preload("res://assets/Kubasta.ttf")
 
 var card_count := 10
 var cards: Array[Node2D] = []
@@ -35,6 +36,7 @@ var hand_card_hovered: Node2D = null
 var _shop_card_dragging: Node2D = null
 var _hand_card_dragging: Node2D = null
 var gold := 200
+var science := 200
 var _displayed_gold := 0.0
 var _gold_tween: Tween
 var refresh_cost := REFRESH_COST_INITIAL
@@ -163,7 +165,7 @@ func _add_cost_label(card: Node2D) -> void:
 
 	var coin_rect := TextureRect.new()
 	coin_rect.texture = COIN_TEXTURE
-	coin_rect.custom_minimum_size = Vector2(16, 16)
+	coin_rect.custom_minimum_size = Vector2(24, 24)
 	coin_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	coin_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	coin_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -174,6 +176,7 @@ func _add_cost_label(card: Node2D) -> void:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_color_override("font_color", COST_LABEL_COLOR)
+	label.add_theme_font_override("font", LABEL_FONT)
 	label.add_theme_font_size_override("font_size", 14)
 	hbox.add_child(label)
 
@@ -425,8 +428,8 @@ func _reindex_shop_cards() -> void:
 		var tw := create_tween().set_parallel(true)
 		tw.tween_property(cards[i], "position", target, SHOP_TWEEN_T)
 		tw.tween_property(cards[i], "scale",    Vector2.ONE, SHOP_TWEEN_T)
-		if cards[i].has_meta("cost_label"):
-			tw.tween_property(cards[i].get_meta("cost_label"), "position", _cost_label_position(i), SHOP_TWEEN_T)
+		if cards[i].has_meta("cost_label_root"):
+			tw.tween_property(cards[i].get_meta("cost_label_root"), "position", _cost_label_position(i), SHOP_TWEEN_T)
 
 func _sell_hand_card(card: Node2D) -> void:
 	var data: Dictionary = CardData.get_all().get(card.card_id, {})

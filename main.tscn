@@ -50,8 +50,8 @@ layout_mode = 2
 
 [node name="LoadButton" type="Button" parent="UI/VBox" unique_id=2028199646]
 layout_mode = 2
-text = "Load Game"
 theme = SubResource("Theme_h2yge")
+text = "Load Game"
 
 [node name="ConfirmDialog" type="ConfirmationDialog" parent="UI" unique_id=1564667805]
 title = "Overwrite Save?"

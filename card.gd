@@ -25,10 +25,11 @@ const BORDER_COLOR    := Color(0.25, 0.25, 0.25)
 const BORDER_WIDTH    := 2.0
 const TEXT_COLOR      := Color(0.1,  0.1,  0.1)
 const TEXT_COLOR_DIM  := Color(0.35, 0.35, 0.35)
-const GOLD_COLOR      := Color(0.78, 0.58, 0.05)
+const GOLD_COLOR      := Color(0.949, 0.761, 0.051, 1)
 const SEPARATOR_COLOR := Color(0.75, 0.73, 0.68)
 
 const COIN_TEXTURE := preload("res://assets/coin.png")
+const LABEL_FONT   := preload("res://assets/Kubasta.ttf")
 
 const TYPE_COLORS := {
 	"Building":     Color(0.52, 0.18, 0.80),
@@ -68,7 +69,7 @@ func _draw() -> void:
 	if data.is_empty():
 		return
 
-	var font       := ThemeDB.fallback_font
+	var font       := LABEL_FONT
 	var margin     := 7.0
 	var text_width := card_size.x - margin * 2.0
 
@@ -96,13 +97,13 @@ func _draw() -> void:
 	if show_cost:
 		var sell_value: int = int(data.get("cost", 0)) / 2
 		var num_str := "%d" % sell_value
-		var coin_size := Vector2(14.0, 14.0)
+		var coin_size := Vector2(20.0, 20.0)
 		var str_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 		var total_w := coin_size.x + 3.0 + str_w
 		var start_x := (card_size.x - total_w) / 2.0
-		draw_texture_rect(COIN_TEXTURE, Rect2(Vector2(start_x, -14.0), coin_size), false)
-		draw_string(font, Vector2(start_x + coin_size.x + 3.0, -2.0), num_str,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, GOLD_COLOR)
+		draw_texture_rect(COIN_TEXTURE, Rect2(Vector2(start_x, -(coin_size.y + 3.0)), coin_size), false)
+		draw_string(font, Vector2(start_x + coin_size.x + 3.0, -7.0), num_str,
+						HORIZONTAL_ALIGNMENT_LEFT, -1, 14, GOLD_COLOR)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
