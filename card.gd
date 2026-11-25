@@ -28,6 +28,8 @@ const TEXT_COLOR_DIM  := Color(0.35, 0.35, 0.35)
 const GOLD_COLOR      := Color(0.78, 0.58, 0.05)
 const SEPARATOR_COLOR := Color(0.75, 0.73, 0.68)
 
+const COIN_TEXTURE := preload("res://assets/coin.png")
+
 const TYPE_COLORS := {
 	"Building":     Color(0.52, 0.18, 0.80),
 	"Unit": Color(0.80, 0.18, 0.18),
@@ -93,8 +95,14 @@ func _draw() -> void:
 	# Sell value, centered above the card (below would be off-screen for hand cards)
 	if show_cost:
 		var sell_value: int = int(data.get("cost", 0)) / 2
-		draw_string(font, Vector2(0.0, -6.0), "%d g" % sell_value,
-				HORIZONTAL_ALIGNMENT_CENTER, card_size.x, 14, GOLD_COLOR)
+		var num_str := "%d" % sell_value
+		var coin_size := Vector2(14.0, 14.0)
+		var str_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		var total_w := coin_size.x + 3.0 + str_w
+		var start_x := (card_size.x - total_w) / 2.0
+		draw_texture_rect(COIN_TEXTURE, Rect2(Vector2(start_x, -14.0), coin_size), false)
+		draw_string(font, Vector2(start_x + coin_size.x + 3.0, -2.0), num_str,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, GOLD_COLOR)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:

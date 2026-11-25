@@ -25,6 +25,7 @@ const COST_LABEL_HEIGHT   := 20.0
 const COST_LABEL_WIDTH    := 50.0   # background rect width, centered under the card
 const COST_LABEL_BG_COLOR := Color(0.12, 0.12, 0.12, 0.85)
 const COST_LABEL_COLOR    := Color(0.78, 0.58, 0.05)
+const COIN_TEXTURE        := preload("res://assets/coin.png")
 
 var card_count := 10
 var cards: Array[Node2D] = []
@@ -91,7 +92,7 @@ func _ready() -> void:
 				# Cost label was built with the random pool id; update it to match the saved card.
 				if cards[i].has_meta("cost_label"):
 					var data: Dictionary = CardData.get_all().get(cards[i].card_id, {})
-					(cards[i].get_meta("cost_label") as Label).text = "%d g" % int(data.get("cost", 0))
+					(cards[i].get_meta("cost_label") as Label).text = "%d" % int(data.get("cost", 0))
 	else:
 		_spawn_cards()
 
@@ -147,22 +148,40 @@ func _spawn_cards(count: int = card_count) -> void:
 # Cost labels are separate nodes pinned to the shop slot, so they don't follow drags or hover.
 func _add_cost_label(card: Node2D) -> void:
 	var data: Dictionary = CardData.get_all().get(card.card_id, {})
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(COST_LABEL_WIDTH, COST_LABEL_HEIGHT)
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = COST_LABEL_BG_COLOR
+	panel.add_theme_stylebox_override("panel", bg)
+
+	var hbox := HBoxContainer.new()
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(hbox)
+
+	var coin_rect := TextureRect.new()
+	coin_rect.texture = COIN_TEXTURE
+	coin_rect.custom_minimum_size = Vector2(16, 16)
+	coin_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	coin_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	coin_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(coin_rect)
+
 	var label := Label.new()
-	label.text = "%d g" % int(data.get("cost", 0))
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	label.size = Vector2(COST_LABEL_WIDTH, COST_LABEL_HEIGHT)
+	label.text = "%d" % int(data.get("cost", 0))
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_color_override("font_color", COST_LABEL_COLOR)
 	label.add_theme_font_size_override("font_size", 14)
-	var bg := StyleBoxFlat.new()
-	bg.bg_color = COST_LABEL_BG_COLOR
-	# bg.set_corner_radius_all(4)
-	label.add_theme_stylebox_override("normal", bg)
+	hbox.add_child(label)
+
 	# card.position is its slot at spawn time; cards[] is still filling, so _shop_card_position would be off.
-	label.position = card.position + _cost_label_offset()
-	add_child(label)
+	panel.position = card.position + _cost_label_offset()
+	add_child(panel)
 	card.set_meta("cost_label", label)
+	card.set_meta("cost_label_root", panel)
 
 func _cost_label_position(index: int) -> Vector2:
 	return _shop_card_position(index) + _cost_label_offset()
@@ -171,10 +190,12 @@ func _cost_label_offset() -> Vector2:
 	return Vector2((CARD_WIDTH - COST_LABEL_WIDTH) / 2.0, COST_LABEL_OFFSET_Y)
 
 func _free_cost_label(card: Node2D) -> void:
+	if card.has_meta("cost_label_root"):
+		var root: Control = card.get_meta("cost_label_root")
+		if is_instance_valid(root):
+			root.queue_free()
+		card.remove_meta("cost_label_root")
 	if card.has_meta("cost_label"):
-		var label: Label = card.get_meta("cost_label")
-		if is_instance_valid(label):
-			label.queue_free()
 		card.remove_meta("cost_label")
 
 func _spawn_hand() -> void:
@@ -439,7 +460,7 @@ func _change_gold(amount: int) -> void:
 	gold += amount
 	if _gold_tween:
 		_gold_tween.kill()
-	var label: Label = $UI/GoldLabel
+	var label: Label = $UI/GoldRow/GoldLabel
 	var flash := Color(1.0, 0.4, 0.4) if amount < 0 else Color(0.4, 1.0, 0.4)
 	var duration := clampf(absf(amount) * 0.05, 0.25, 0.8)
 	label.modulate = flash
@@ -451,7 +472,7 @@ func _change_gold(amount: int) -> void:
 
 func _set_gold_display(value: float) -> void:
 	_displayed_gold = value
-	$UI/GoldLabel.text = "Gold: %d" % roundi(value)
+	$UI/GoldRow/GoldLabel.text = "%d" % roundi(value)
 
 func _on_card_purchased(card: Node2D) -> void:
 	var data: Dictionary = CardData.get_all().get(card.card_id, {})
