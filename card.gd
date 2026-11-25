@@ -74,14 +74,14 @@ func _draw() -> void:
 	var type_str: String = CardData.get_type(card_id)
 	var type_col: Color  = TYPE_COLORS.get(type_str, Color.GRAY)
 	draw_string(font, Vector2(margin, 15.0), type_str.to_upper(),
-			HORIZONTAL_ALIGNMENT_CENTER, text_width, 9, type_col)
+			HORIZONTAL_ALIGNMENT_LEFT, text_width, 9, type_col)
 
 	draw_line(Vector2(margin, 21.0), Vector2(card_size.x - margin, 21.0), SEPARATOR_COLOR, 1.0)
 
 	# Name
 	var name_str: String = data.get("name", "")
 	draw_string(font, Vector2(margin, 36.0), name_str,
-			HORIZONTAL_ALIGNMENT_CENTER, text_width, 11, TEXT_COLOR)
+			HORIZONTAL_ALIGNMENT_LEFT, text_width, 11, TEXT_COLOR)
 
 	draw_line(Vector2(margin, 43.0), Vector2(card_size.x - margin, 43.0), SEPARATOR_COLOR, 1.0)
 

@@ -9,7 +9,8 @@ const CARD_WIDTH := 100.0
 const CARD_SPACING    := 110.0
 
 const HAND_OVERLAP      := 20.0
-const HAND_SCALE        := 1.25
+const HAND_BASE_SCALE   := 1.2
+const HAND_SCALE        := 1.4
 const HAND_LIFT         := 20.0
 const HAND_TWEEN_T      := 0.1
 const HAND_ARC_RADIUS   := 1000.0
@@ -49,8 +50,8 @@ func _ready() -> void:
 	_drop_zone = ColorRect.new()
 	_drop_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_drop_zone.color = Color(0.1, 0.4, 0.9, 0.25)
-	_drop_zone.size = Vector2(vp.x, vp.y / 3.0)
-	_drop_zone.position = Vector2(0.0, vp.y * 2.0 / 3.0)
+	_drop_zone.size = Vector2(vp.x, vp.y / 2.0)
+	_drop_zone.position = Vector2(0.0, vp.y / 2.0)
 	_drop_zone.z_index = -1
 	add_child(_drop_zone)
 	_drop_zone.hide()
@@ -58,7 +59,7 @@ func _ready() -> void:
 	_sell_drop_zone = ColorRect.new()
 	_sell_drop_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_sell_drop_zone.color = Color(0.9, 0.2, 0.1, 0.25)
-	_sell_drop_zone.size = Vector2(vp.x, vp.y / 3.0)
+	_sell_drop_zone.size = Vector2(vp.x, vp.y / 2.0)
 	_sell_drop_zone.position = Vector2(0.0, 0.0)
 	_sell_drop_zone.z_index = -1
 	add_child(_sell_drop_zone)
@@ -87,6 +88,10 @@ func _ready() -> void:
 				cards[i].position = card_states[i]["position"]
 				cards[i].card_id  = card_states[i].get("card_id", cards[i].card_id)
 				cards[i].queue_redraw()
+				# Cost label was built with the random pool id; update it to match the saved card.
+				if cards[i].has_meta("cost_label"):
+					var data: Dictionary = CardData.get_all().get(cards[i].card_id, {})
+					(cards[i].get_meta("cost_label") as Label).text = "%d g" % int(data.get("cost", 0))
 	else:
 		_spawn_cards()
 
@@ -112,7 +117,6 @@ func _spawn_cards(count: int = card_count) -> void:
 	pool.append(building_ids[randi() % building_ids.size()])
 	# Fill remaining slots randomly, rejecting tech duplicates.
 	var used_techs: Dictionary = {}
-	var remaining := count - 1
 	var attempts  := 0
 	while pool.size() < count and attempts < count * 20:
 		attempts += 1
@@ -192,6 +196,7 @@ func _spawn_hand() -> void:
 		card.set_meta("hand_index", i)
 		card.position = _hand_card_position(i)
 		card.rotation = _hand_card_rotation(i)
+		card.scale = Vector2(HAND_BASE_SCALE, HAND_BASE_SCALE)
 		_connect_hand_hover(card, i)
 		hand_nodes.append(card)
 
@@ -200,7 +205,7 @@ func _process(_delta: float) -> void:
 	if card == null or hand_nodes.size() <= 1:
 		return
 	var n      := hand_nodes.size()
-	var card_w := 100.0
+	var card_w := 100.0 * HAND_BASE_SCALE
 	# Find the slot whose center x is nearest to the dragged card's center x.
 	# Does not move the dragged card — only updates other cards' positions.
 	var drag_center_x := card.position.x + card_w / 2.0
@@ -251,8 +256,8 @@ func _hand_card_position(index: int) -> Vector2:
 	var angle  := _hand_card_angle(index)
 	var arc_pt := center + Vector2(cos(angle), sin(angle)) * HAND_ARC_RADIUS
 	# Anchor card's bottom-center to the arc point.
-	var card_w := 100.0
-	var card_h := 140.0
+	var card_w := 100.0 * HAND_BASE_SCALE
+	var card_h := 140.0 * HAND_BASE_SCALE
 	var local_bottom_center := Vector2(card_w / 2.0, card_h)
 	return arc_pt - local_bottom_center.rotated(_hand_card_rotation(index))
 
@@ -270,7 +275,7 @@ func _connect_shop_hover(card: Node2D) -> void:
 		_shop_card_dragging = null
 		_drop_zone.hide()
 		var drop_y: float = card.global_position.y + card_h / 2.0
-		if drop_y >= get_viewport_rect().size.y * 2.0 / 3.0:
+		if drop_y >= get_viewport_rect().size.y / 2.0:
 			card.purchased.emit()
 		else:
 			var origin := _shop_card_position(card.get_meta("shop_index") as int)
@@ -334,7 +339,7 @@ func _connect_hand_hover(card: Node2D, base_z: int) -> void:
 			var origin := _hand_card_position(idx)
 			var rot    := _hand_card_rotation(idx)
 			var tw := create_tween().set_parallel(true)
-			tw.tween_property(card, "scale",    Vector2.ONE, HAND_TWEEN_T)
+			tw.tween_property(card, "scale",    Vector2(HAND_BASE_SCALE, HAND_BASE_SCALE), HAND_TWEEN_T)
 			tw.tween_property(card, "position", origin,      HAND_TWEEN_T)
 			tw.tween_property(card, "rotation", rot,         HAND_TWEEN_T)
 	)
@@ -384,7 +389,7 @@ func _unhover_hand_card(card: Node2D) -> void:
 	var base := _hand_card_position(idx)
 	var rot  := _hand_card_rotation(idx)
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(card, "scale",    Vector2.ONE, HAND_TWEEN_T)
+	tw.tween_property(card, "scale",    Vector2(HAND_BASE_SCALE, HAND_BASE_SCALE), HAND_TWEEN_T)
 	tw.tween_property(card, "position", base,        HAND_TWEEN_T)
 	if not card.dragging:
 		tw.tween_property(card, "rotation", rot, HAND_TWEEN_T)
@@ -421,7 +426,7 @@ func _sell_hand_card(card: Node2D) -> void:
 		var tw := create_tween().set_parallel(true)
 		tw.tween_property(hand_nodes[i], "position", target,      HAND_TWEEN_T)
 		tw.tween_property(hand_nodes[i], "rotation", rot,         HAND_TWEEN_T)
-		tw.tween_property(hand_nodes[i], "scale",    Vector2.ONE, HAND_TWEEN_T)
+		tw.tween_property(hand_nodes[i], "scale",    Vector2(HAND_BASE_SCALE, HAND_BASE_SCALE), HAND_TWEEN_T)
 	_update_gold_label()
 
 func _update_gold_label() -> void:
@@ -496,6 +501,9 @@ func _on_resolution_selected(index: int) -> void:
 	var res: Vector2i = RESOLUTIONS[index]
 	get_window().size = res
 	get_window().move_to_center()
+
+func quick_save() -> void:
+	GameState.save_game(cards, hand_cards, gold)
 
 func _on_save_exit_pressed() -> void:
 	GameState.save_game(cards, hand_cards, gold)
