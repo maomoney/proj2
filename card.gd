@@ -1,5 +1,26 @@
 extends Node2D
 
+static var _icon_cache: Dictionary = {}
+
+static func _get_icon_tex(png: Texture2D, cell: Vector2i, color: Color) -> ImageTexture:
+	var key := "%d_%d_%d_%x" % [png.get_rid().get_id(), cell.x, cell.y, color.to_rgba32()]
+	if _icon_cache.has(key):
+		return _icon_cache[key]
+	var src: Image = png.get_image()
+	src.convert(Image.FORMAT_RGBA8)
+	var region := Rect2i(cell.x * 16, cell.y * 16, 16, 16)
+	var img: Image = src.get_region(region)
+	for y in 16:
+		for x in 16:
+			var px := img.get_pixel(x, y)
+			if px.a < 0.5:
+				img.set_pixel(x, y, Color(0, 0, 0, 0))
+			else:
+				img.set_pixel(x, y, Color(color.r, color.g, color.b, 1.0 - px.r))
+	var tex := ImageTexture.create_from_image(img)
+	_icon_cache[key] = tex
+	return tex
+
 signal purchased
 signal mouse_entered
 signal mouse_exited
@@ -32,6 +53,12 @@ const SEPARATOR_COLOR := Color(0.75, 0.73, 0.68)
 const COIN_TEXTURE   := preload("res://assets/coin.png")
 const BEAKER_TEXTURE := preload("res://assets/beaker.png")
 const LABEL_FONT     := preload("res://assets/Kubasta.ttf")
+const ICON_BUILDING_PNG := preload("res://assets/Icons_Map_Markers.png")
+const ICON_BUILDING     := Vector2i(0, 3)
+const ICON_UNIT_PNG     := preload("res://assets/Icons_RPG.png")
+const ICON_UNIT         := Vector2i(0, 0)
+const ICON_TECH_PNG     := preload("res://assets/Icons_Alchemy.png")
+const ICON_TECH         := Vector2i(2, 6)
 
 const TYPE_COLORS := {
 	"Building":     Color(0.52, 0.18, 0.80),
@@ -75,25 +102,27 @@ func _draw() -> void:
 	var margin     := 7.0
 	var text_width := card_size.x - margin * 2.0
 
-	# Type
+	# Type with icon
 	var type_str: String = CardData.get_type(card_id)
-	var type_col: Color  = TYPE_COLORS.get(type_str, Color.GRAY)
-	draw_string(font, Vector2(margin, 15.0), type_str.to_upper(),
-			HORIZONTAL_ALIGNMENT_LEFT, text_width, 9, type_col)
-
-	draw_line(Vector2(margin, 21.0), Vector2(card_size.x - margin, 21.0), SEPARATOR_COLOR, 1.0)
-
-	# Name
 	var name_str: String = data.get("name", "")
-	draw_string(font, Vector2(margin, 36.0), name_str,
-			HORIZONTAL_ALIGNMENT_LEFT, text_width, 11, TEXT_COLOR)
+	var type_col: Color  = TYPE_COLORS.get(type_str, Color.GRAY)
+	var icon_png: Texture2D = {"Building": ICON_BUILDING_PNG, "Unit": ICON_UNIT_PNG, "Tech": ICON_TECH_PNG}.get(type_str, ICON_BUILDING_PNG)
+	var icon_cell: Vector2i = {"Building": ICON_BUILDING,    "Unit": ICON_UNIT,    "Tech": ICON_TECH   }.get(type_str, Vector2i(0, 0))
+	var icon_dst := Rect2(Vector2(margin, 4.0), Vector2(12.0, 12.0))
+	draw_texture_rect(_get_icon_tex(icon_png, icon_cell, type_col), icon_dst, false)
+	draw_string(font, Vector2(margin + 14.0, 15.0), name_str.to_upper(),
+			HORIZONTAL_ALIGNMENT_LEFT, text_width - 14.0, 8, type_col)
 
-	draw_line(Vector2(margin, 43.0), Vector2(card_size.x - margin, 43.0), SEPARATOR_COLOR, 1.0)
+	# draw_line(Vector2(margin, 21.0), Vector2(card_size.x - margin, 21.0), SEPARATOR_COLOR, 1.0)
+
+	var tile_size = card_size.x - margin * 2.0
+	draw_rect(Rect2(Vector2(margin, 22.0), Vector2(tile_size, int(tile_size * 2 / 3) )), SEPARATOR_COLOR)
+
 
 	# Description
 	var desc_str: String = data.get("description", "")
-	draw_multiline_string(font, Vector2(margin, 57.0), desc_str,
-			HORIZONTAL_ALIGNMENT_LEFT, text_width, 9, 4, TEXT_COLOR_DIM)
+	draw_multiline_string(font, Vector2(margin, 90.0), desc_str,
+			HORIZONTAL_ALIGNMENT_LEFT, text_width, 7, 4, TEXT_COLOR_DIM)
 
 	# Sell value, centered above the card (below would be off-screen for hand cards)
 	if show_cost:
@@ -103,8 +132,10 @@ func _draw() -> void:
 		var str_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 		var total_w := coin_size.x + 3.0 + str_w
 		var start_x := (card_size.x - total_w) / 2.0
-		draw_texture_rect(COIN_TEXTURE, Rect2(Vector2(start_x, -(coin_size.y + 3.0)), coin_size), false)
-		draw_string(font, Vector2(start_x + coin_size.x + 3.0, -7.0), num_str,
+		var coin_y := -(coin_size.y + 3.0)
+		var coin_center_y := coin_y + coin_size.y * 0.5
+		draw_texture_rect(COIN_TEXTURE, Rect2(Vector2(start_x, coin_y), coin_size), false)
+		draw_string(font, Vector2(start_x + coin_size.x + 3.0, coin_center_y + 5.0), num_str,
 						HORIZONTAL_ALIGNMENT_LEFT, -1, 14, GOLD_COLOR)
 	
 	if preview_only:
@@ -124,8 +155,10 @@ func _draw() -> void:
 		var below_y := card_size.y + 6.0
 		draw_rect(Rect2(Vector2(bg_x, below_y), Vector2(bg_w, bg_h)), Color(0.12, 0.12, 0.12, 0.85))
 		start_x = bg_x + pad.x
-		draw_texture_rect(icon, Rect2(Vector2(start_x, below_y + pad.y), coin_size), false)
-		draw_string(font, Vector2(start_x + coin_size.x + 3.0, below_y + pad.y + 14.0), num_str,
+		var icon_y := below_y + pad.y
+		var icon_center_y := icon_y + coin_size.y * 0.5
+		draw_texture_rect(icon, Rect2(Vector2(start_x, icon_y), coin_size), false)
+		draw_string(font, Vector2(start_x + coin_size.x + 3.0, icon_center_y + 5.0), num_str,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, cost_color)
 
 func _input(event: InputEvent) -> void:
