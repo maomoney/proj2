@@ -121,7 +121,7 @@ func _spawn_cards(count: int = card_count) -> void:
 
 	var all_ids    := CardData.get_all().keys()
 	var building_ids := CardData.BUILDINGS.keys()
-	var tech_ids     := CardData.TECHS.keys()
+	# var tech_ids     := CardData.TECHS.keys()
 
 	# Build the pool: shuffle all ids, pick count with constraints.
 	# Constraint 1: at least 1 building.

@@ -95,7 +95,7 @@ func _draw() -> void:
 
 	# Sell value, centered above the card (below would be off-screen for hand cards)
 	if show_cost:
-		var sell_value: int = int(data.get("cost", 0)) / 2
+		var sell_value: int = int(int(data.get("cost", 0)) / 2.0)
 		var num_str := "%d" % sell_value
 		var coin_size := Vector2(20.0, 20.0)
 		var str_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
