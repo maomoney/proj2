@@ -4,12 +4,13 @@ const UNITS: Dictionary = {
 	"clubman": {
 		"name":        "Clubman",
 		"description": "Stone age melee unit",
-		"cost":        2,
+		"cost":        5,
 	},
 	"archer": {
 		"name":        "Archer",
 		"description": "Stone age ranged unit",
-		"cost":        3,
+		"cost":        7,
+		"requires":	   ["archery"]
 	},
 }
 
@@ -17,15 +18,38 @@ const BUILDINGS: Dictionary = {
 	"farm": {
 		"name":        "Farm",
 		"description": "Produces food",
-		"cost":        4,
+		"cost":        5,
 	},
+	"granary": {
+		"name":        "Granary",
+		"description": "Adjacent farms +1 yield",
+		"cost":        5,
+		"requires":	   ["pottery"]
+	},
+	"library": {
+		"name":        "Library",
+		"description": "Produces science",
+		"cost":        8,
+		"requires":	   ["writing"]
+	}
 }
 
 const TECHS: Dictionary = {
 	"archery": {
 		"name":        "Archery",
-		"description": "Add Archers to shop",
+		"description": "Add Archer to shop",
 		"cost":        10,
+	},
+	"pottery": {
+		"name":        "Pottery",
+		"description": "Add Granary to shop",
+		"cost":        10,
+	},
+	"writing": {
+		"name":        "Writing",
+		"description": "Add Library to shop",
+		"cost":        20,
+		"requires":	   ["pottery"]
 	},
 }
 

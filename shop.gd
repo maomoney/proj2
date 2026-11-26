@@ -26,6 +26,7 @@ var cards: Array[Node2D] = []
 var _hand: HandManager
 var _shop_card_dragging: Node2D = null
 var _shop_card_hovered: Node2D = null
+var techs_researched: Array[String] = []
 var _shop_hover_preview: Node2D = null
 var gold := 200
 var science := 200
@@ -114,22 +115,36 @@ func _spawn_cards(count: int = card_count) -> void:
 		card.queue_free()
 	cards.clear()
 
-	var all_ids    := CardData.get_all().keys()
-	var building_ids := CardData.BUILDINGS.keys()
-	# var tech_ids     := CardData.TECHS.keys()
+	var all_ids := CardData.get_all().keys()
 
 	# Build the pool: shuffle all ids, pick count with constraints.
-	# Constraint 1: at least 1 building.
+	# Constraint 1: at least 1 building (if any are eligible).
 	# Constraint 2: no duplicate techs.
+	# Constraint 3: skip techs already researched.
+	# Constraint 4: skip cards whose requires[] aren't all in techs_researched.
+	var eligible_ids: Array[String] = []
+	for id in all_ids:
+		var reqs: Array = CardData.get_all().get(id, {}).get("requires", [])
+		var reqs_met := reqs.all(func(r): return techs_researched.has(r))
+		if not reqs_met:
+			continue
+		if CardData.get_type(id) == "Tech" and techs_researched.has(id):
+			continue
+		eligible_ids.append(id)
+
+	var eligible_buildings: Array[String] = []
+	for id in eligible_ids:
+		if CardData.get_type(id) == "Building":
+			eligible_buildings.append(id)
+
 	var pool: Array[String] = []
-	# Reserve one slot for a guaranteed building.
-	pool.append(building_ids[randi() % building_ids.size()])
-	# Fill remaining slots randomly, rejecting tech duplicates.
+	if not eligible_buildings.is_empty():
+		pool.append(eligible_buildings[randi() % eligible_buildings.size()])
 	var used_techs: Dictionary = {}
-	var attempts  := 0
+	var attempts := 0
 	while pool.size() < count and attempts < count * 20:
 		attempts += 1
-		var id: String = all_ids[randi() % all_ids.size()]
+		var id: String = eligible_ids[randi() % eligible_ids.size()]
 		if CardData.get_type(id) == "Tech" and used_techs.has(id):
 			continue
 		if CardData.get_type(id) == "Tech":
@@ -378,9 +393,10 @@ func _on_card_purchased(card: Node2D) -> void:
 		return
 	if is_tech:
 		_change_science(-cost)
+		techs_researched.append(card.card_id)
 	else:
 		_change_gold(-cost)
-	_hand.hand_cards.append(card.card_id)
+		_hand.hand_cards.append(card.card_id)
 	_free_cost_label(card)
 	cards.erase(card)
 	card.queue_free()
