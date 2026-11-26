@@ -3,9 +3,10 @@ extends Node
 var should_load_save := false
 const SAVE_PATH := "user://save.json"
 
-func save_game(cards: Array, hand_cards: Array[String], gold: int) -> void:
+func save_game(cards: Array, hand_cards: Array[String], gold: int, science: int = 0) -> void:
 	var data := {
 		"gold":       gold,
+		"science":    science,
 		"hand_cards": hand_cards,
 		"cards":      [],
 	}
@@ -26,6 +27,7 @@ func load_game() -> Dictionary:
 		card_states.append({"position": Vector2(c["x"], c["y"]), "card_id": c.get("card_id", "")})
 	return {
 		"gold":       int(raw.get("gold", 10)),
+		"science":    int(raw.get("science", 0)),
 		"hand_cards": raw.get("hand_cards", []),
 		"cards":      card_states,
 	}

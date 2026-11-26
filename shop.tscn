@@ -1,13 +1,19 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://shop.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/coin.png" id="2"]
 [ext_resource type="FontFile" uid="uid://bver225owtm3o" path="res://assets/Kubasta.ttf" id="3"]
+[ext_resource type="Texture2D" path="res://assets/beaker.png" id="4"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_shop"]
 font = ExtResource("3")
 font_size = 20
 font_color = Color(0.949, 0.761, 0.051, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_science"]
+font = ExtResource("3")
+font_size = 20
+font_color = Color(0.4, 0.78, 1.0, 1)
 
 [node name="Shop" type="Node2D"]
 script = ExtResource("1")
@@ -16,7 +22,7 @@ script = ExtResource("1")
 
 [node name="GoldRow" type="HBoxContainer" parent="UI"]
 offset_left = 10.0
-offset_right = 130.0
+offset_right = 240.0
 offset_top = 10.0
 offset_bottom = 36.0
 alignment = 1
@@ -33,6 +39,24 @@ layout_mode = 2
 text = "10"
 theme_override_colors/font_color = Color(0.949, 0.761, 0.051, 1)
 label_settings = SubResource("LabelSettings_shop")
+
+[node name="Spacer" type="Control" parent="UI/GoldRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(8, 0)
+
+[node name="ScienceIcon" type="TextureRect" parent="UI/GoldRow"]
+layout_mode = 2
+texture = ExtResource("4")
+custom_minimum_size = Vector2(18, 18)
+expand_mode = 3
+stretch_mode = 5
+
+[node name="ScienceLabel" type="Label" parent="UI/GoldRow"]
+layout_mode = 2
+text = "0"
+theme_override_fonts/font = ExtResource("3")
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(0.4, 0.78, 1.0, 1)
 
 [node name="TitleRow" type="HBoxContainer" parent="UI"]
 anchor_left = 0.5

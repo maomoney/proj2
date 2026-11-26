@@ -26,7 +26,9 @@ const COST_LABEL_WIDTH    := 80.0   # background rect width, centered under the 
 const COST_LABEL_BG_COLOR := Color(0.12, 0.12, 0.12, 0.85)
 const COST_LABEL_COLOR    := Color(0.949, 0.761, 0.051, 1)
 const COIN_TEXTURE        := preload("res://assets/coin.png")
+const BEAKER_TEXTURE      := preload("res://assets/beaker.png")
 const LABEL_FONT          := preload("res://assets/Kubasta.ttf")
+const SCIENCE_LABEL_COLOR := Color(0.4, 0.78, 1.0, 1)
 
 var card_count := 10
 var cards: Array[Node2D] = []
@@ -38,7 +40,9 @@ var _hand_card_dragging: Node2D = null
 var gold := 200
 var science := 200
 var _displayed_gold := 0.0
+var _displayed_science := 0.0
 var _gold_tween: Tween
+var _science_tween: Tween
 var refresh_cost := REFRESH_COST_INITIAL
 var _top_layer: CanvasLayer
 var _drop_zone: ColorRect
@@ -83,6 +87,7 @@ func _ready() -> void:
 		GameState.should_load_save = false
 		var state := GameState.load_game()
 		gold = state.get("gold", gold)
+		science = state.get("science", science)
 		hand_cards.assign(state.get("hand_cards", hand_cards))
 		var card_states: Array = state.get("cards", [])
 		_spawn_cards(card_states.size() if card_states.size() > 0 else card_count)
@@ -94,12 +99,18 @@ func _ready() -> void:
 				# Cost label was built with the random pool id; update it to match the saved card.
 				if cards[i].has_meta("cost_label"):
 					var data: Dictionary = CardData.get_all().get(cards[i].card_id, {})
-					(cards[i].get_meta("cost_label") as Label).text = "%d" % int(data.get("cost", 0))
+					var saved_is_tech := CardData.get_type(cards[i].card_id) == "Tech"
+					var lbl := cards[i].get_meta("cost_label") as Label
+					lbl.text = "%d" % int(data.get("cost", 0))
+					lbl.add_theme_color_override("font_color", SCIENCE_LABEL_COLOR if saved_is_tech else COST_LABEL_COLOR)
+					if cards[i].has_meta("cost_label_icon"):
+						(cards[i].get_meta("cost_label_icon") as TextureRect).texture = BEAKER_TEXTURE if saved_is_tech else COIN_TEXTURE
 	else:
 		_spawn_cards()
 
 	_spawn_hand()
 	_set_gold_display(gold)
+	_set_science_display(science)
 	_update_gold_label()
 
 func _spawn_cards(count: int = card_count) -> void:
@@ -163,19 +174,20 @@ func _add_cost_label(card: Node2D) -> void:
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(hbox)
 
-	var coin_rect := TextureRect.new()
-	coin_rect.texture = COIN_TEXTURE
-	coin_rect.custom_minimum_size = Vector2(24, 24)
-	coin_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	coin_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	coin_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hbox.add_child(coin_rect)
+	var is_tech := CardData.get_type(card.card_id) == "Tech"
+	var icon_rect := TextureRect.new()
+	icon_rect.texture = BEAKER_TEXTURE if is_tech else COIN_TEXTURE
+	icon_rect.custom_minimum_size = Vector2(24, 24)
+	icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(icon_rect)
 
 	var label := Label.new()
 	label.text = "%d" % int(data.get("cost", 0))
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_color_override("font_color", COST_LABEL_COLOR)
+	label.add_theme_color_override("font_color", SCIENCE_LABEL_COLOR if is_tech else COST_LABEL_COLOR)
 	label.add_theme_font_override("font", LABEL_FONT)
 	label.add_theme_font_size_override("font_size", 14)
 	hbox.add_child(label)
@@ -184,6 +196,7 @@ func _add_cost_label(card: Node2D) -> void:
 	panel.position = card.position + _cost_label_offset()
 	add_child(panel)
 	card.set_meta("cost_label", label)
+	card.set_meta("cost_label_icon", icon_rect)
 	card.set_meta("cost_label_root", panel)
 
 func _cost_label_position(index: int) -> Vector2:
@@ -290,7 +303,7 @@ func _connect_shop_hover(card: Node2D) -> void:
 	var card_h: float = card.card_size.y
 	card.drag_started.connect(func() -> void:
 		_shop_card_dragging = card
-		get_tree().create_timer(0.2).timeout.connect(func() -> void:
+		get_tree().create_timer(0.3).timeout.connect(func() -> void:
 			if is_instance_valid(card) and card.dragging:
 				_drop_zone.show()
 		)
@@ -477,10 +490,36 @@ func _set_gold_display(value: float) -> void:
 	_displayed_gold = value
 	$UI/GoldRow/GoldLabel.text = "%d" % roundi(value)
 
+func _set_science_display(value: float) -> void:
+	_displayed_science = value
+	$UI/GoldRow/ScienceLabel.text = "%d" % roundi(value)
+
+const SCIENCE_LABEL_NORMAL := Color(0.4, 0.78, 1.0, 1)
+
+func _change_science(amount: int) -> void:
+	if amount == 0:
+		return
+	science += amount
+	if _science_tween:
+		_science_tween.kill()
+	var label: Label = $UI/GoldRow/ScienceLabel
+	var flash := Color(1.0, 0.4, 0.4) if amount < 0 else Color(0.4, 1.0, 0.4)
+	var duration := clampf(absf(amount) * 0.05, 0.25, 0.8)
+	label.add_theme_color_override("font_color", flash)
+	_science_tween = create_tween().set_parallel(true)
+	_science_tween.tween_method(_set_science_display, _displayed_science, float(science), duration) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_science_tween.tween_method(
+		func(c: Color) -> void: label.add_theme_color_override("font_color", c),
+		flash, SCIENCE_LABEL_NORMAL, duration) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
 func _on_card_purchased(card: Node2D) -> void:
 	var data: Dictionary = CardData.get_all().get(card.card_id, {})
 	var cost: int = data.get("cost", 0)
-	if gold < cost:
+	var is_tech := CardData.get_type(card.card_id) == "Tech"
+	var currency := science if is_tech else gold
+	if currency < cost:
 		_drop_card(card)
 		var origin := _shop_card_position(card.get_meta("shop_index") as int)
 		var tw := create_tween()
@@ -490,7 +529,10 @@ func _on_card_purchased(card: Node2D) -> void:
 		tw.tween_property(card, "scale",    Vector2.ONE, SHOP_TWEEN_T * 2)
 		tw.tween_property(card, "position", origin,      SHOP_TWEEN_T * 2)
 		return
-	_change_gold(-cost)
+	if is_tech:
+		_change_science(-cost)
+	else:
+		_change_gold(-cost)
 	hand_cards.append(card.card_id)
 	_free_cost_label(card)
 	cards.erase(card)
@@ -527,8 +569,8 @@ func _on_resolution_selected(index: int) -> void:
 	get_window().move_to_center()
 
 func quick_save() -> void:
-	GameState.save_game(cards, hand_cards, gold)
+	GameState.save_game(cards, hand_cards, gold, science)
 
 func _on_save_exit_pressed() -> void:
-	GameState.save_game(cards, hand_cards, gold)
+	GameState.save_game(cards, hand_cards, gold, science)
 	get_tree().change_scene_to_file("res://main.tscn")
