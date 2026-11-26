@@ -6,16 +6,7 @@ const REFRESH_COST_INITIAL = 2
 const REFRESH_COST_INCREMENT = 1
 
 const CARD_WIDTH := 100.0
-const CARD_SPACING    := 110.0
-
-const HAND_OVERLAP      := 20.0
-const HAND_BASE_SCALE   := 1.2
-const HAND_SCALE        := 1.4
-const HAND_LIFT         := 20.0
-const HAND_TWEEN_T      := 0.1
-const HAND_ARC_RADIUS   := 1000.0
-const HAND_ARC_SEP_DEG  := 5.0   # degrees between adjacent cards
-const HAND_ARC_MAX_DEG  := 40.0  # maximum fan angle in degrees
+const CARD_SPACING    := 106.0
 
 const SHOP_SCALE    := 1.1
 const SHOP_LIFT 	:= 0
@@ -32,11 +23,10 @@ const SCIENCE_LABEL_COLOR := Color(0.4, 0.78, 1.0, 1)
 
 var card_count := 10
 var cards: Array[Node2D] = []
-var hand_cards: Array[String] = []
-var hand_nodes: Array[Node2D] = []
-var hand_card_hovered: Node2D = null
+var _hand: HandManager
 var _shop_card_dragging: Node2D = null
-var _hand_card_dragging: Node2D = null
+var _shop_card_hovered: Node2D = null
+var _shop_hover_preview: Node2D = null
 var gold := 200
 var science := 200
 var _displayed_gold := 0.0
@@ -71,6 +61,11 @@ func _ready() -> void:
 	_sell_drop_zone.z_index = -1
 	add_child(_sell_drop_zone)
 	_sell_drop_zone.hide()
+
+	_hand = HandManager.new()
+	_hand.setup(self, _top_layer, _sell_drop_zone)
+	_hand.sell_requested.connect(_sell_hand_card)
+
 	$UI/Modal.hide()
 	$UI/SettingsModal.hide()
 
@@ -88,7 +83,7 @@ func _ready() -> void:
 		var state := GameState.load_game()
 		gold = state.get("gold", gold)
 		science = state.get("science", science)
-		hand_cards.assign(state.get("hand_cards", hand_cards))
+		_hand.hand_cards.assign(state.get("hand_cards", _hand.hand_cards))
 		var card_states: Array = state.get("cards", [])
 		_spawn_cards(card_states.size() if card_states.size() > 0 else card_count)
 		for i in cards.size():
@@ -108,7 +103,7 @@ func _ready() -> void:
 	else:
 		_spawn_cards()
 
-	_spawn_hand()
+	_hand.spawn()
 	_set_gold_display(gold)
 	_set_science_display(science)
 	_update_gold_label()
@@ -214,62 +209,33 @@ func _free_cost_label(card: Node2D) -> void:
 	if card.has_meta("cost_label"):
 		card.remove_meta("cost_label")
 
-func _spawn_hand() -> void:
-	for n in hand_nodes:
-		n.queue_free()
-	hand_nodes.clear()
-	hand_card_hovered = null
-	_hand_card_dragging = null
-	if hand_cards.is_empty():
-		return
+func _free_shop_preview() -> void:
+	if is_instance_valid(_shop_hover_preview):
+		_shop_hover_preview.queue_free()
+	_shop_hover_preview = null
 
-	for i in hand_cards.size():
-		var card := Node2D.new()
-		card.set_script(CARD_SCRIPT)
-		card.name    = "Hand%d" % i
-		card.card_id = hand_cards[i] as String
-		add_child(card)
-		card.z_index = i
-		card.set_meta("hand_index", i)
-		card.position = _hand_card_position(i)
-		card.rotation = _hand_card_rotation(i)
-		card.scale = Vector2(HAND_BASE_SCALE, HAND_BASE_SCALE)
-		_connect_hand_hover(card, i)
-		hand_nodes.append(card)
+func _preview_position(mouse: Vector2) -> Vector2:
+	var preview_w := CARD_WIDTH * 2.0
+	var right_of_center := mouse.x > get_viewport_rect().size.x / 2.0
+	return Vector2(mouse.x - (preview_w if right_of_center else 0.0), mouse.y)
 
 func _process(_delta: float) -> void:
-	var card := _hand_card_dragging
-	if card == null or hand_nodes.size() <= 1:
-		return
-	var n      := hand_nodes.size()
-	var card_w := 100.0 * HAND_BASE_SCALE
-	# Find the slot whose center x is nearest to the dragged card's center x.
-	# Does not move the dragged card — only updates other cards' positions.
-	var drag_center_x := card.position.x + card_w / 2.0
-	var target_idx := 0
-	var min_dist   := INF
-	for j in n:
-		var slot_cx := _hand_card_position(j).x + card_w / 2.0
-		var d       := absf(drag_center_x - slot_cx)
-		if d < min_dist:
-			min_dist   = d
-			target_idx = j
-	var current_idx: int = card.get_meta("hand_index") as int
-	if target_idx == current_idx:
-		return
-	# Reorder arrays.
-	hand_cards.remove_at(current_idx)
-	hand_cards.insert(target_idx, card.card_id)
-	hand_nodes.erase(card)
-	hand_nodes.insert(target_idx, card)
-	# Update indices and tween non-dragged cards to new positions.
-	for i in n:
-		hand_nodes[i].set_meta("hand_index", i)
-		hand_nodes[i].z_index = i
-		if hand_nodes[i] != card:
-			var tw := create_tween().set_parallel(true)
-			tw.tween_property(hand_nodes[i], "position", _hand_card_position(i),  HAND_TWEEN_T)
-			tw.tween_property(hand_nodes[i], "rotation", _hand_card_rotation(i),  HAND_TWEEN_T)
+	_hand.process_drag()
+	var want_preview: bool = _shop_card_hovered != null and not _shop_card_hovered.dragging
+	if want_preview:
+		if not is_instance_valid(_shop_hover_preview):
+			var preview := Node2D.new()
+			preview.set_script(CARD_SCRIPT)
+			preview.preview_only = true
+			preview.scale = Vector2(2.0, 2.0)
+			_top_layer.add_child(preview)
+			_shop_hover_preview = preview
+		if _shop_hover_preview.card_id != _shop_card_hovered.card_id:
+			_shop_hover_preview.card_id = _shop_card_hovered.card_id
+			_shop_hover_preview.queue_redraw()
+		_shop_hover_preview.position = _preview_position(get_viewport().get_mouse_position())
+	else:
+		_free_shop_preview()
 
 func _shop_card_position(index: int) -> Vector2:
 	var n          := cards.size()
@@ -277,32 +243,13 @@ func _shop_card_position(index: int) -> Vector2:
 	var start_x    := (get_viewport_rect().size.x - total_span) / 2.0
 	return Vector2(start_x + index * CARD_SPACING, 100)
 
-func _hand_card_angle(index: int) -> float:
-	var n := hand_cards.size()
-	if n <= 1:
-		return -PI / 2.0
-	var sep := minf(HAND_ARC_SEP_DEG, HAND_ARC_MAX_DEG / (n - 1))
-	return -PI / 2.0 + (index - (n - 1) / 2.0) * deg_to_rad(sep)
-
-func _hand_card_rotation(index: int) -> float:
-	return _hand_card_angle(index) + PI / 2.0
-
-func _hand_card_position(index: int) -> Vector2:
-	var vp     := get_viewport_rect().size
-	var center := Vector2(vp.x / 2.0, vp.y + HAND_ARC_RADIUS)
-	var angle  := _hand_card_angle(index)
-	var arc_pt := center + Vector2(cos(angle), sin(angle)) * HAND_ARC_RADIUS
-	# Anchor card's bottom-center to the arc point.
-	var card_w := 100.0 * HAND_BASE_SCALE
-	var card_h := 140.0 * HAND_BASE_SCALE
-	var local_bottom_center := Vector2(card_w / 2.0, card_h)
-	return arc_pt - local_bottom_center.rotated(_hand_card_rotation(index))
-
 func _connect_shop_hover(card: Node2D) -> void:
 	var card_w: float = card.card_size.x
 	var card_h: float = card.card_size.y
 	card.drag_started.connect(func() -> void:
 		_shop_card_dragging = card
+		_shop_card_hovered = null
+		card.z_index = 100
 		get_tree().create_timer(0.3).timeout.connect(func() -> void:
 			if is_instance_valid(card) and card.dragging:
 				_drop_zone.show()
@@ -310,6 +257,7 @@ func _connect_shop_hover(card: Node2D) -> void:
 	)
 	card.drag_ended.connect(func() -> void:
 		_shop_card_dragging = null
+		card.z_index = 0
 		_drop_zone.hide()
 		var drop_y: float = card.global_position.y + card_h / 2.0
 		if drop_y >= get_viewport_rect().size.y / 2.0:
@@ -323,7 +271,8 @@ func _connect_shop_hover(card: Node2D) -> void:
 	card.mouse_entered.connect(func() -> void:
 		if _shop_card_dragging != null and _shop_card_dragging != card:
 			return
-		_lift_card(card)
+		_shop_card_hovered = card
+		# _hand.lift_card(card)
 		var base  := _shop_card_position(card.get_meta("shop_index") as int)
 		var offset := Vector2(card_w / 2.0 * (1.0 - SHOP_SCALE),
 							  card_h / 2.0 * (1.0 - SHOP_SCALE) - SHOP_LIFT)
@@ -332,104 +281,14 @@ func _connect_shop_hover(card: Node2D) -> void:
 		tw.tween_property(card, "position", base + offset,                   SHOP_TWEEN_T)
 	)
 	card.mouse_exited.connect(func() -> void:
-		_drop_card(card)
+		if _shop_card_hovered == card:
+			_shop_card_hovered = null
+		_hand.drop_card(card)
 		var base := _shop_card_position(card.get_meta("shop_index") as int)
 		var tw := create_tween().set_parallel(true)
 		tw.tween_property(card, "scale",    Vector2.ONE, SHOP_TWEEN_T)
 		tw.tween_property(card, "position", base,        SHOP_TWEEN_T)
 	)
-
-func _connect_hand_hover(card: Node2D, base_z: int) -> void:
-	card.set_meta("base_z", base_z)
-	var card_w: float = card.card_size.x
-	var card_h: float = card.card_size.y
-	card.drag_started.connect(func() -> void:
-		# If another card is hovered, cancel this drag and start on the hovered card instead.
-		if hand_card_hovered != null and hand_card_hovered != card:
-			card.dragging = false
-			var hc := hand_card_hovered
-			hand_card_hovered = null
-			hc._hovered = false
-			hc.dragging = true   # set before _unhover so rotation tween is skipped
-			_unhover_hand_card(hc)
-			hc.rotation = 0.0
-			hc.drag_offset = hc.to_local(get_viewport().get_mouse_position())
-			hc.drag_started.emit()
-			return
-		_hand_card_dragging = card
-		card.rotation = 0.0
-		card.show_cost = true
-		get_tree().create_timer(0.2).timeout.connect(func() -> void:
-			if is_instance_valid(card) and card.dragging:
-				_sell_drop_zone.show()
-		)
-	)
-	card.drag_ended.connect(func() -> void:
-		_hand_card_dragging = null
-		_sell_drop_zone.hide()
-		card.show_cost = false
-		var drop_y: float = card.global_position.y + card_h / 2.0
-		if drop_y <= get_viewport_rect().size.y / 3.0:
-			_sell_hand_card(card)
-		else:
-			var idx    := card.get_meta("hand_index") as int
-			var origin := _hand_card_position(idx)
-			var rot    := _hand_card_rotation(idx)
-			var tw := create_tween().set_parallel(true)
-			tw.tween_property(card, "scale",    Vector2(HAND_BASE_SCALE, HAND_BASE_SCALE), HAND_TWEEN_T)
-			tw.tween_property(card, "position", origin,      HAND_TWEEN_T)
-			tw.tween_property(card, "rotation", rot,         HAND_TWEEN_T)
-	)
-	card.mouse_entered.connect(func() -> void:
-		if hand_card_hovered == card:
-			return
-		if _hand_card_dragging != null and _hand_card_dragging != card:
-			return
-		if hand_card_hovered != null:
-			_unhover_hand_card(hand_card_hovered)
-		hand_card_hovered = card
-		card.show_cost = true
-		_lift_card(card)
-		var idx          := card.get_meta("hand_index") as int
-		var vp           := get_viewport_rect().size
-		var arc_center_x := _hand_card_position(idx).x + card_w / 2.0
-		var hover_pos    := Vector2(
-			arc_center_x - card_w * HAND_SCALE / 2.0,
-			vp.y - HAND_LIFT - card_h * HAND_SCALE)
-		var tw := create_tween().set_parallel(true)
-		tw.tween_property(card, "scale",    Vector2(HAND_SCALE, HAND_SCALE), HAND_TWEEN_T)
-		tw.tween_property(card, "position", hover_pos,                       HAND_TWEEN_T)
-		tw.tween_property(card, "rotation", 0.0,                             HAND_TWEEN_T)
-	)
-	card.mouse_exited.connect(func() -> void:
-		if hand_card_hovered == card:
-			hand_card_hovered = null
-		_unhover_hand_card(card)
-	)
-
-func _lift_card(card: Node2D) -> void:
-	var global := card.global_position
-	card.reparent(_top_layer)
-	card.global_position = global
-
-func _drop_card(card: Node2D) -> void:
-	if card.get_parent() != self:
-		var global := card.global_position
-		card.reparent(self)
-		card.global_position = global
-
-func _unhover_hand_card(card: Node2D) -> void:
-	if not card.dragging:
-		card.show_cost = false
-	_drop_card(card)
-	var idx  := card.get_meta("hand_index") as int
-	var base := _hand_card_position(idx)
-	var rot  := _hand_card_rotation(idx)
-	var tw := create_tween().set_parallel(true)
-	tw.tween_property(card, "scale",    Vector2(HAND_BASE_SCALE, HAND_BASE_SCALE), HAND_TWEEN_T)
-	tw.tween_property(card, "position", base,        HAND_TWEEN_T)
-	if not card.dragging:
-		tw.tween_property(card, "rotation", rot, HAND_TWEEN_T)
 
 func _reindex_shop_cards() -> void:
 	var n := cards.size()
@@ -446,24 +305,12 @@ func _reindex_shop_cards() -> void:
 
 func _sell_hand_card(card: Node2D) -> void:
 	var data: Dictionary = CardData.get_all().get(card.card_id, {})
-	var refund: int = data.get("cost", 0) / 2
-	_change_gold(refund)
-	var idx: int = card.get_meta("hand_index") as int
-	hand_cards.remove_at(idx)
-	hand_nodes.erase(card)
-	if hand_card_hovered == card:
-		hand_card_hovered = null
-	card.queue_free()
-	# Reindex remaining hand nodes.
-	for i in hand_nodes.size():
-		hand_nodes[i].set_meta("hand_index", i)
-		hand_nodes[i].z_index = i
-		var target := _hand_card_position(i)
-		var rot    := _hand_card_rotation(i)
-		var tw := create_tween().set_parallel(true)
-		tw.tween_property(hand_nodes[i], "position", target,      HAND_TWEEN_T)
-		tw.tween_property(hand_nodes[i], "rotation", rot,         HAND_TWEEN_T)
-		tw.tween_property(hand_nodes[i], "scale",    Vector2(HAND_BASE_SCALE, HAND_BASE_SCALE), HAND_TWEEN_T)
+	var refund: int = int(int(data.get("cost", 0)) / 2.0)
+	if CardData.get_type(card.card_id) == "Tech":
+		_change_science(refund)
+	else:
+		_change_gold(refund)
+	_hand.remove_and_reindex(card)
 	_update_gold_label()
 
 func _update_gold_label() -> void:
@@ -520,7 +367,7 @@ func _on_card_purchased(card: Node2D) -> void:
 	var is_tech := CardData.get_type(card.card_id) == "Tech"
 	var currency := science if is_tech else gold
 	if currency < cost:
-		_drop_card(card)
+		_hand.drop_card(card)
 		var origin := _shop_card_position(card.get_meta("shop_index") as int)
 		var tw := create_tween()
 		tw.tween_property(card, "modulate", Color.RED,   SHOP_TWEEN_T)
@@ -533,12 +380,12 @@ func _on_card_purchased(card: Node2D) -> void:
 		_change_science(-cost)
 	else:
 		_change_gold(-cost)
-	hand_cards.append(card.card_id)
+	_hand.hand_cards.append(card.card_id)
 	_free_cost_label(card)
 	cards.erase(card)
 	card.queue_free()
 	_reindex_shop_cards()
-	_spawn_hand()
+	_hand.spawn()
 	_update_gold_label()
 
 func _on_refresh_pressed() -> void:
@@ -569,8 +416,8 @@ func _on_resolution_selected(index: int) -> void:
 	get_window().move_to_center()
 
 func quick_save() -> void:
-	GameState.save_game(cards, hand_cards, gold, science)
+	GameState.save_game(cards, _hand.hand_cards, gold, science)
 
 func _on_save_exit_pressed() -> void:
-	GameState.save_game(cards, hand_cards, gold, science)
+	GameState.save_game(cards, _hand.hand_cards, gold, science)
 	get_tree().change_scene_to_file("res://main.tscn")

@@ -25,7 +25,7 @@ const TECHS: Dictionary = {
 	"archery": {
 		"name":        "Archery",
 		"description": "Add Archers to shop",
-		"cost":        100,
+		"cost":        10,
 	},
 }
 

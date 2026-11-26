@@ -11,6 +11,7 @@ var card_id: String = ""
 var dragging := false
 var drag_offset := Vector2.ZERO
 var _hovered := false
+var preview_only := false
 # Draws the sell value (half the cost) above the card. Shop toggles this for hovered/dragged hand cards.
 var show_cost := false:
 	set(value):
@@ -21,15 +22,16 @@ var show_cost := false:
 const CORNER_RADIUS   := 6.0
 const DRAG_THRESHOLD  := 5.0
 const BG_COLOR        := Color(0.97, 0.95, 0.90)
-const BORDER_COLOR    := Color(0.25, 0.25, 0.25)
-const BORDER_WIDTH    := 2.0
+const BORDER_COLOR    := Color(0.0, 0.0, 0.0)
+const BORDER_WIDTH    := 1.0
 const TEXT_COLOR      := Color(0.1,  0.1,  0.1)
 const TEXT_COLOR_DIM  := Color(0.35, 0.35, 0.35)
 const GOLD_COLOR      := Color(0.949, 0.761, 0.051, 1)
 const SEPARATOR_COLOR := Color(0.75, 0.73, 0.68)
 
-const COIN_TEXTURE := preload("res://assets/coin.png")
-const LABEL_FONT   := preload("res://assets/Kubasta.ttf")
+const COIN_TEXTURE   := preload("res://assets/coin.png")
+const BEAKER_TEXTURE := preload("res://assets/beaker.png")
+const LABEL_FONT     := preload("res://assets/Kubasta.ttf")
 
 const TYPE_COLORS := {
 	"Building":     Color(0.52, 0.18, 0.80),
@@ -104,8 +106,31 @@ func _draw() -> void:
 		draw_texture_rect(COIN_TEXTURE, Rect2(Vector2(start_x, -(coin_size.y + 3.0)), coin_size), false)
 		draw_string(font, Vector2(start_x + coin_size.x + 3.0, -7.0), num_str,
 						HORIZONTAL_ALIGNMENT_LEFT, -1, 14, GOLD_COLOR)
+	
+	if preview_only:
+		var cost: int = int(data.get("cost", 0))
+		var is_tech := CardData.get_type(card_id) == "Tech"
+		var icon := BEAKER_TEXTURE if is_tech else COIN_TEXTURE
+		var cost_color := Color(0.4, 0.78, 1.0, 1) if is_tech else GOLD_COLOR
+		var num_str := "%d" % cost
+		var coin_size := Vector2(20.0, 20.0)
+		var str_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		var total_w := coin_size.x + 3.0 + str_w
+		var start_x := (card_size.x - total_w) / 2.0
+		var pad := Vector2(6.0, 4.0)
+		var bg_w := total_w + pad.x * 2.0
+		var bg_h := coin_size.y + pad.y * 2.0
+		var bg_x := (card_size.x - bg_w) / 2.0
+		var below_y := card_size.y + 6.0
+		draw_rect(Rect2(Vector2(bg_x, below_y), Vector2(bg_w, bg_h)), Color(0.12, 0.12, 0.12, 0.85))
+		start_x = bg_x + pad.x
+		draw_texture_rect(icon, Rect2(Vector2(start_x, below_y + pad.y), coin_size), false)
+		draw_string(font, Vector2(start_x + coin_size.x + 3.0, below_y + pad.y + 14.0), num_str,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, cost_color)
 
 func _input(event: InputEvent) -> void:
+	if preview_only:
+		return
 	if event is InputEventMouseMotion:
 		if dragging:
 			return  # don't update hover state while dragging
@@ -119,6 +144,8 @@ func _input(event: InputEvent) -> void:
 			mouse_exited.emit()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if preview_only:
+		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		var local := to_local(event.position)
 		var in_card := Rect2(Vector2.ZERO, card_size).has_point(local)
