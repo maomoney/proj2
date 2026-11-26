@@ -1,0 +1,67 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://modal.gd" id="1"]
+[ext_resource type="FontFile" uid="uid://bver225owtm3o" path="res://assets/Kubasta.ttf" id="2"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_modal"]
+font = ExtResource("2")
+font_size = 20
+font_color = Color(0.949, 0.761, 0.051, 1)
+
+[node name="Modal" type="Panel"]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -130.0
+offset_right = 150.0
+offset_bottom = 130.0
+script = ExtResource("1")
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="Title" type="Label" parent="MarginContainer/VBox"]
+layout_mode = 2
+text = "Menu"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 24
+label_settings = SubResource("LabelSettings_modal")
+
+[node name="Spacer" type="Control" parent="MarginContainer/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 16)
+
+[node name="SettingsButton" type="Button" parent="MarginContainer/VBox"]
+layout_mode = 2
+text = "Settings"
+
+[node name="Spacer2" type="Control" parent="MarginContainer/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 8)
+
+[node name="SaveExitButton" type="Button" parent="MarginContainer/VBox"]
+layout_mode = 2
+text = "Save and Exit"
+
+[node name="Spacer3" type="Control" parent="MarginContainer/VBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 8)
+
+[node name="CloseButton" type="Button" parent="MarginContainer/VBox"]
+layout_mode = 2
+text = "Close"
+
+[connection signal="pressed" from="MarginContainer/VBox/SettingsButton" to="." method="_on_settings_pressed"]
+[connection signal="pressed" from="MarginContainer/VBox/SaveExitButton" to="." method="_on_save_exit_pressed"]
+[connection signal="pressed" from="MarginContainer/VBox/CloseButton" to="." method="_on_close_pressed"]

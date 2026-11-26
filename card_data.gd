@@ -5,12 +5,16 @@ const UNITS: Dictionary = {
 		"name":        "Clubman",
 		"description": "Stone age melee unit",
 		"cost":        5,
+		"icon_png": 	preload("res://assets/Icons_RPG.png"),  # optional png override
+		"icon":    	 	Vector2i(10, 0),
 	},
 	"archer": {
 		"name":        "Archer",
 		"description": "Stone age ranged unit",
 		"cost":        7,
-		"requires":	   ["archery"]
+		"requires":	   ["archery"],
+		"icon_png": 	preload("res://assets/Icons_RPG.png"),  # optional png override
+		"icon":    	 	Vector2i(5, 0),
 	},
 }
 
@@ -19,18 +23,24 @@ const BUILDINGS: Dictionary = {
 		"name":        "Farm",
 		"description": "Produces food",
 		"cost":        5,
+		"icon_png": 	preload("res://assets/Icons_Food.png"),  # optional png override
+		"icon":    	 	Vector2i(1, 0),
 	},
 	"granary": {
 		"name":        "Granary",
 		"description": "Adjacent farms +1 yield",
 		"cost":        5,
-		"requires":	   ["pottery"]
+		"requires":	   ["pottery"],
+		"icon_png": 	preload("res://assets/Icons_Map_Markers.png"),  # optional png override
+		"icon":    	 	Vector2i(10, 3),
 	},
 	"library": {
 		"name":        "Library",
 		"description": "Produces science",
 		"cost":        8,
-		"requires":	   ["writing"]
+		"requires":	   ["writing"],
+		"icon_png": 	preload("res://assets/Icons_Map_Markers.png"),  # optional png override
+		"icon":    	 	Vector2i(3, 0),
 	}
 }
 

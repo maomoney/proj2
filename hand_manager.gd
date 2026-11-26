@@ -16,12 +16,13 @@ var hand_cards: Array[String] = []
 var hand_nodes: Array[Node2D] = []
 var hand_card_hovered: Node2D = null
 var _hand_card_dragging: Node2D = null
+var show_sell_value := true
 
 var _parent: Node2D
 var _top_layer: CanvasLayer
 var _sell_drop_zone: ColorRect
 
-func setup(parent: Node2D, top_layer: CanvasLayer, sell_drop_zone: ColorRect) -> void:
+func setup(parent: Node2D, top_layer: CanvasLayer, sell_drop_zone: ColorRect = null) -> void:
 	_parent = parent
 	_top_layer = top_layer
 	_sell_drop_zone = sell_drop_zone
@@ -77,6 +78,34 @@ func process_drag() -> void:
 			var tw := _parent.create_tween().set_parallel(true)
 			tw.tween_property(hand_nodes[i], "position", card_position(i), HAND_TWEEN_T)
 			tw.tween_property(hand_nodes[i], "rotation", card_rotation(i), HAND_TWEEN_T)
+
+func add_card(card_id: String) -> void:
+	hand_cards.append(card_id)
+	var i := hand_cards.size() - 1
+	var card := Node2D.new()
+	card.set_script(CARD_SCRIPT)
+	card.name    = "Hand%d" % i
+	card.card_id = card_id
+	_parent.add_child(card)
+	card.z_index = i
+	card.set_meta("hand_index", i)
+	card.scale = Vector2(HAND_BASE_SCALE, HAND_BASE_SCALE)
+	# Start below the viewport
+	var vp_h := _parent.get_viewport_rect().size.y
+	card.position = card_position(i) + Vector2(0.0, vp_h)
+	card.rotation = card_rotation(i)
+	_connect_hover(card, i)
+	hand_nodes.append(card)
+	# Tween existing cards to updated positions, new card slides up
+	var tw := _parent.create_tween().set_parallel(true)
+	for j in hand_nodes.size():
+		hand_nodes[j].set_meta("hand_index", j)
+		hand_nodes[j].z_index = j
+		tw.tween_property(hand_nodes[j], "position", card_position(j), HAND_TWEEN_T * 3)
+		tw.tween_property(hand_nodes[j], "rotation", card_rotation(j), HAND_TWEEN_T * 3)
+
+func remove_card(card: Node2D) -> void:
+	remove_and_reindex(card)
 
 func remove_and_reindex(card: Node2D) -> void:
 	var idx: int = card.get_meta("hand_index") as int
@@ -153,15 +182,16 @@ func _connect_hover(card: Node2D, base_z: int) -> void:
 			return
 		_hand_card_dragging = card
 		card.rotation = 0.0
-		card.show_cost = true
+		card.show_cost = show_sell_value
 		_parent.get_tree().create_timer(0.2).timeout.connect(func() -> void:
-			if is_instance_valid(card) and card.dragging:
+			if is_instance_valid(card) and card.dragging and _sell_drop_zone != null:
 				_sell_drop_zone.show()
 		)
 	)
 	card.drag_ended.connect(func() -> void:
 		_hand_card_dragging = null
-		_sell_drop_zone.hide()
+		if _sell_drop_zone != null:
+			_sell_drop_zone.hide()
 		card.show_cost = false
 		var drop_y: float = card.global_position.y + card_h / 2.0
 		if drop_y <= _parent.get_viewport_rect().size.y / 3.0:
@@ -181,7 +211,7 @@ func _connect_hover(card: Node2D, base_z: int) -> void:
 		if hand_card_hovered != null:
 			unhover(hand_card_hovered)
 		hand_card_hovered = card
-		card.show_cost = true
+		card.show_cost = show_sell_value
 		lift_card(card)
 		var idx          := card.get_meta("hand_index") as int
 		var vp           := _parent.get_viewport_rect().size

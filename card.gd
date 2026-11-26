@@ -106,17 +106,17 @@ func _draw() -> void:
 	var type_str: String = CardData.get_type(card_id)
 	var name_str: String = data.get("name", "")
 	var type_col: Color  = TYPE_COLORS.get(type_str, Color.GRAY)
-	var icon_png: Texture2D = {"Building": ICON_BUILDING_PNG, "Unit": ICON_UNIT_PNG, "Tech": ICON_TECH_PNG}.get(type_str, ICON_BUILDING_PNG)
-	var icon_cell: Vector2i = {"Building": ICON_BUILDING,    "Unit": ICON_UNIT,    "Tech": ICON_TECH   }.get(type_str, Vector2i(0, 0))
-	var icon_dst := Rect2(Vector2(margin, 4.0), Vector2(12.0, 12.0))
+	var icon_png: Texture2D = data.get("icon_png", {"Building": ICON_BUILDING_PNG, "Unit": ICON_UNIT_PNG, "Tech": ICON_TECH_PNG}.get(type_str, ICON_BUILDING_PNG))
+	var icon_cell: Vector2i = data.get("icon",     {"Building": ICON_BUILDING,    "Unit": ICON_UNIT,    "Tech": ICON_TECH   }.get(type_str, Vector2i(0, 0)))
+	var icon_dst := Rect2(Vector2(margin, 4.0), Vector2(10.0, 10.0))
 	draw_texture_rect(_get_icon_tex(icon_png, icon_cell, type_col), icon_dst, false)
-	draw_string(font, Vector2(margin + 14.0, 15.0), name_str.to_upper(),
+	draw_string(font, Vector2(margin + 12.0, 13.0), name_str.to_upper(),
 			HORIZONTAL_ALIGNMENT_LEFT, text_width - 14.0, 8, type_col)
 
 	# draw_line(Vector2(margin, 21.0), Vector2(card_size.x - margin, 21.0), SEPARATOR_COLOR, 1.0)
 
 	var tile_size = card_size.x - margin * 2.0
-	draw_rect(Rect2(Vector2(margin, 22.0), Vector2(tile_size, int(tile_size * 2 / 3) )), SEPARATOR_COLOR)
+	draw_rect(Rect2(Vector2(margin, 16.0), Vector2(tile_size, int(tile_size * 3 / 4) )), SEPARATOR_COLOR)
 
 
 	# Description
@@ -144,22 +144,23 @@ func _draw() -> void:
 		var icon := BEAKER_TEXTURE if is_tech else COIN_TEXTURE
 		var cost_color := Color(0.4, 0.78, 1.0, 1) if is_tech else GOLD_COLOR
 		var num_str := "%d" % cost
-		var coin_size := Vector2(20.0, 20.0)
-		var str_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-		var total_w := coin_size.x + 3.0 + str_w
+		var coin_size := Vector2(15.0, 15.0)
+		var font_size := 11
+		var str_w := font.get_string_size(num_str, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+		var total_w := coin_size.x + 2.0 + str_w
 		var start_x := (card_size.x - total_w) / 2.0
-		var pad := Vector2(6.0, 4.0)
+		var pad := Vector2(4.5, 3.0)
 		var bg_w := total_w + pad.x * 2.0
 		var bg_h := coin_size.y + pad.y * 2.0
 		var bg_x := (card_size.x - bg_w) / 2.0
-		var below_y := card_size.y + 6.0
+		var below_y := card_size.y + 4.5
 		draw_rect(Rect2(Vector2(bg_x, below_y), Vector2(bg_w, bg_h)), Color(0.12, 0.12, 0.12, 0.85))
 		start_x = bg_x + pad.x
 		var icon_y := below_y + pad.y
 		var icon_center_y := icon_y + coin_size.y * 0.5
 		draw_texture_rect(icon, Rect2(Vector2(start_x, icon_y), coin_size), false)
-		draw_string(font, Vector2(start_x + coin_size.x + 3.0, icon_center_y + 5.0), num_str,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, 14, cost_color)
+		draw_string(font, Vector2(start_x + coin_size.x + 2.0, icon_center_y + 4.0), num_str,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, cost_color)
 
 func _input(event: InputEvent) -> void:
 	if preview_only:

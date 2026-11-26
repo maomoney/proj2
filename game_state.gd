@@ -1,16 +1,22 @@
 extends Node
 
 var should_load_save := false
+
+# In-memory state passed between scenes (not saved to disk automatically)
+var hand_cards: Array[String] = []
+var gold := 200
+var science := 200
+var techs_researched: Array[String] = []
 const SAVE_PATH := "user://save.json"
 
-func save_game(cards: Array, hand_cards: Array[String], gold: int, science: int = 0) -> void:
+func save_game(p_cards: Array, p_hand_cards: Array[String], p_gold: int, p_science: int = 0) -> void:
 	var data := {
-		"gold":       gold,
-		"science":    science,
-		"hand_cards": hand_cards,
+		"gold":       p_gold,
+		"science":    p_science,
+		"hand_cards": p_hand_cards,
 		"cards":      [],
 	}
-	for card in cards:
+	for card in p_cards:
 		data["cards"].append({"x": card.position.x, "y": card.position.y, "card_id": card.card_id})
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	file.store_string(JSON.stringify(data))

@@ -67,7 +67,7 @@ func _ready() -> void:
 	_hand.setup(self, _top_layer, _sell_drop_zone)
 	_hand.sell_requested.connect(_sell_hand_card)
 
-	$UI/Modal.hide()
+	$UI/Modal.close()
 	$UI/SettingsModal.hide()
 
 	var res_dropdown: OptionButton = $UI/SettingsModal/MarginContainer/VBox/TabContainer/Graphics/ResolutionOption
@@ -78,6 +78,12 @@ func _ready() -> void:
 		if RESOLUTIONS[i] == current:
 			res_dropdown.selected = i
 			break
+
+	# Load from GameState (set by town or save/load)
+	gold              = GameState.gold
+	science           = GameState.science
+	techs_researched.assign(GameState.techs_researched)
+	_hand.hand_cards.assign(GameState.hand_cards)
 
 	if GameState.should_load_save:
 		GameState.should_load_save = false
@@ -325,7 +331,7 @@ func _sell_hand_card(card: Node2D) -> void:
 		_change_science(refund)
 	else:
 		_change_gold(refund)
-	_hand.remove_and_reindex(card)
+	_hand.remove_card(card)
 	_update_gold_label()
 
 func _update_gold_label() -> void:
@@ -396,12 +402,11 @@ func _on_card_purchased(card: Node2D) -> void:
 		techs_researched.append(card.card_id)
 	else:
 		_change_gold(-cost)
-		_hand.hand_cards.append(card.card_id)
+		_hand.add_card(card.card_id)
 	_free_cost_label(card)
 	cards.erase(card)
 	card.queue_free()
 	_reindex_shop_cards()
-	_hand.spawn()
 	_update_gold_label()
 
 func _on_refresh_pressed() -> void:
@@ -413,18 +418,18 @@ func _on_refresh_pressed() -> void:
 	_update_gold_label()
 
 func _on_menu_button_pressed() -> void:
-	$UI/Modal.show()
+	$UI/Modal.open()
 
 func _on_close_button_pressed() -> void:
-	$UI/Modal.hide()
+	$UI/Modal.close()
 
 func _on_settings_button_pressed() -> void:
-	$UI/Modal.hide()
+	$UI/Modal.close()
 	$UI/SettingsModal.show()
 
 func _on_settings_close_pressed() -> void:
 	$UI/SettingsModal.hide()
-	$UI/Modal.show()
+	$UI/Modal.open()
 
 func _on_resolution_selected(index: int) -> void:
 	var res: Vector2i = RESOLUTIONS[index]
@@ -437,3 +442,10 @@ func quick_save() -> void:
 func _on_save_exit_pressed() -> void:
 	GameState.save_game(cards, _hand.hand_cards, gold, science)
 	get_tree().change_scene_to_file("res://main.tscn")
+
+func _on_town_button_pressed() -> void:
+	GameState.hand_cards.assign(_hand.hand_cards)
+	GameState.gold = gold
+	GameState.science = science
+	GameState.techs_researched.assign(techs_researched)
+	get_tree().change_scene_to_file("res://town.tscn")

@@ -1,9 +1,10 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://shop.gd" id="1"]
 [ext_resource type="Texture2D" path="res://assets/coin.png" id="2"]
 [ext_resource type="FontFile" uid="uid://bver225owtm3o" path="res://assets/Kubasta.ttf" id="3"]
 [ext_resource type="Texture2D" path="res://assets/beaker.png" id="4"]
+[ext_resource type="PackedScene" path="res://modal.tscn" id="5"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_shop"]
 font = ExtResource("3")
@@ -78,6 +79,15 @@ layout_mode = 2
 text = "Refresh (2g)"
 label_settings = SubResource("LabelSettings_shop")
 
+[node name="TownButton" type="Button" parent="UI"]
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -220.0
+offset_right = -120.0
+offset_top = 10.0
+offset_bottom = 42.0
+text = "Town"
+
 [node name="MenuButton" type="Button" parent="UI"]
 anchor_left = 1.0
 anchor_right = 1.0
@@ -87,59 +97,7 @@ offset_top = 10.0
 offset_bottom = 42.0
 text = "Menu"
 
-[node name="Modal" type="Panel" parent="UI"]
-visible = false
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -150.0
-offset_top = -130.0
-offset_right = 150.0
-offset_bottom = 130.0
-
-[node name="MarginContainer" type="MarginContainer" parent="UI/Modal"]
-anchor_right = 1.0
-anchor_bottom = 1.0
-theme_override_constants/margin_left = 16
-theme_override_constants/margin_right = 16
-theme_override_constants/margin_top = 16
-theme_override_constants/margin_bottom = 16
-
-[node name="VBox" type="VBoxContainer" parent="UI/Modal/MarginContainer"]
-layout_mode = 2
-alignment = 1
-
-[node name="Title" type="Label" parent="UI/Modal/MarginContainer/VBox"]
-layout_mode = 2
-text = "Menu"
-horizontal_alignment = 1
-theme_override_font_sizes/font_size = 24
-label_settings = SubResource("LabelSettings_shop")
-
-[node name="Spacer" type="Control" parent="UI/Modal/MarginContainer/VBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 16)
-
-[node name="SettingsButton" type="Button" parent="UI/Modal/MarginContainer/VBox"]
-layout_mode = 2
-text = "Settings"
-
-[node name="Spacer2" type="Control" parent="UI/Modal/MarginContainer/VBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 8)
-
-[node name="SaveExitButton" type="Button" parent="UI/Modal/MarginContainer/VBox"]
-layout_mode = 2
-text = "Save and Exit"
-
-[node name="Spacer3" type="Control" parent="UI/Modal/MarginContainer/VBox"]
-layout_mode = 2
-custom_minimum_size = Vector2(0, 8)
-
-[node name="CloseButton" type="Button" parent="UI/Modal/MarginContainer/VBox"]
-layout_mode = 2
-text = "Close"
+[node name="Modal" parent="UI" instance=ExtResource("5")]
 
 [node name="SettingsModal" type="Panel" parent="UI"]
 visible = false
@@ -211,10 +169,11 @@ custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 text = "Close"
 
+[connection signal="pressed" from="UI/TownButton" to="." method="_on_town_button_pressed"]
 [connection signal="pressed" from="UI/MenuButton" to="." method="_on_menu_button_pressed"]
 [connection signal="pressed" from="UI/TitleRow/RefreshButton" to="." method="_on_refresh_pressed"]
-[connection signal="pressed" from="UI/Modal/MarginContainer/VBox/SettingsButton" to="." method="_on_settings_button_pressed"]
-[connection signal="pressed" from="UI/Modal/MarginContainer/VBox/SaveExitButton" to="." method="_on_save_exit_pressed"]
-[connection signal="pressed" from="UI/Modal/MarginContainer/VBox/CloseButton" to="." method="_on_close_button_pressed"]
+[connection signal="save_exit_pressed" from="UI/Modal" to="." method="_on_save_exit_pressed"]
+[connection signal="settings_pressed" from="UI/Modal" to="." method="_on_settings_button_pressed"]
+[connection signal="close_pressed" from="UI/Modal" to="." method="_on_close_button_pressed"]
 [connection signal="item_selected" from="UI/SettingsModal/MarginContainer/VBox/TabContainer/Graphics/ResolutionOption" to="." method="_on_resolution_selected"]
 [connection signal="pressed" from="UI/SettingsModal/MarginContainer/VBox/CloseButton" to="." method="_on_settings_close_pressed"]
