@@ -249,6 +249,7 @@ func _process(_delta: float) -> void:
 			preview.set_script(CARD_SCRIPT)
 			preview.preview_only = true
 			preview.scale = Vector2(2.0, 2.0)
+			preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			_top_layer.add_child(preview)
 			_shop_hover_preview = preview
 		if _shop_hover_preview.card_id != _shop_card_hovered.card_id:

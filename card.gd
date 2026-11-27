@@ -59,11 +59,18 @@ const ICON_UNIT_PNG     := preload("res://assets/Icons_RPG.png")
 const ICON_UNIT         := Vector2i(0, 0)
 const ICON_TECH_PNG     := preload("res://assets/Icons_Alchemy.png")
 const ICON_TECH         := Vector2i(2, 6)
+const CARD_BG_TEXTURE   := preload("res://assets/card2.png")
+
+# const TYPE_COLORS := {
+# 	"Building":     Color(0.52, 0.18, 0.80),
+# 	"Unit": Color(0.80, 0.18, 0.18),
+# 	"Tech":     Color(0.18, 0.40, 0.80),
+# }
 
 const TYPE_COLORS := {
-	"Building":     Color(0.52, 0.18, 0.80),
-	"Unit": Color(0.80, 0.18, 0.18),
-	"Tech":     Color(0.18, 0.40, 0.80),
+	"Building":     Color(0, 0, 0),
+	"Unit":			Color(0, 0, 0),
+	"Tech":     	Color(0, 0, 0),
 }
 
 func _get_rounded_rect_points(rect: Rect2, radius: float, segments: int = 8) -> PackedVector2Array:
@@ -83,14 +90,11 @@ func _get_rounded_rect_points(rect: Rect2, radius: float, segments: int = 8) -> 
 	return points
 
 func _draw() -> void:
-	var rect := Rect2(Vector2.ZERO, card_size)
-	var points := _get_rounded_rect_points(rect, CORNER_RADIUS)
-
-	draw_polygon(points, PackedColorArray([BG_COLOR]))
-
-	var border_pts := PackedVector2Array(points)
-	border_pts.append(border_pts[0])
-	draw_polyline(border_pts, BORDER_COLOR, BORDER_WIDTH, true)
+	var tex := CARD_BG_TEXTURE
+	var tex_size := tex.get_size()
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(card_size.x / tex_size.x, card_size.y / tex_size.y))
+	draw_texture(tex, Vector2.ZERO)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	if card_id.is_empty():
 		return
@@ -108,21 +112,21 @@ func _draw() -> void:
 	var type_col: Color  = TYPE_COLORS.get(type_str, Color.GRAY)
 	var icon_png: Texture2D = data.get("icon_png", {"Building": ICON_BUILDING_PNG, "Unit": ICON_UNIT_PNG, "Tech": ICON_TECH_PNG}.get(type_str, ICON_BUILDING_PNG))
 	var icon_cell: Vector2i = data.get("icon",     {"Building": ICON_BUILDING,    "Unit": ICON_UNIT,    "Tech": ICON_TECH   }.get(type_str, Vector2i(0, 0)))
-	var icon_dst := Rect2(Vector2(margin, 4.0), Vector2(10.0, 10.0))
+	var icon_dst := Rect2(Vector2(7.0, 6.0), Vector2(8.0, 8.0))
+	draw_string(font, Vector2(17.0, 13.0), name_str.to_upper(),
+			HORIZONTAL_ALIGNMENT_LEFT, text_width - 14.0, 9, type_col)
 	draw_texture_rect(_get_icon_tex(icon_png, icon_cell, type_col), icon_dst, false)
-	draw_string(font, Vector2(margin + 12.0, 13.0), name_str.to_upper(),
-			HORIZONTAL_ALIGNMENT_LEFT, text_width - 14.0, 8, type_col)
 
 	# draw_line(Vector2(margin, 21.0), Vector2(card_size.x - margin, 21.0), SEPARATOR_COLOR, 1.0)
 
 	var tile_size = card_size.x - margin * 2.0
-	draw_rect(Rect2(Vector2(margin, 16.0), Vector2(tile_size, int(tile_size * 3 / 4) )), SEPARATOR_COLOR)
+	draw_rect(Rect2(Vector2(margin, 20.0), Vector2(tile_size, int(tile_size * 2 / 3) )), SEPARATOR_COLOR)
 
 
 	# Description
 	var desc_str: String = data.get("description", "")
-	draw_multiline_string(font, Vector2(margin, 90.0), desc_str,
-			HORIZONTAL_ALIGNMENT_LEFT, text_width, 7, 4, TEXT_COLOR_DIM)
+	draw_multiline_string(font, Vector2(margin, 85.0), desc_str,
+			HORIZONTAL_ALIGNMENT_LEFT, text_width, 8, 4, TEXT_COLOR_DIM)
 
 	# Sell value, centered above the card (below would be off-screen for hand cards)
 	if show_cost:

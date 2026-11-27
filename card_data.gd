@@ -8,8 +8,8 @@ const UNITS: Dictionary = {
 		"icon_png": 	preload("res://assets/Icons_RPG.png"),  # optional png override
 		"icon":    	 	Vector2i(10, 0),
 	},
-	"archer": {
-		"name":        "Archer",
+	"bowman": {
+		"name":        "Bowman",
 		"description": "Stone age ranged unit",
 		"cost":        7,
 		"requires":	   ["archery"],
@@ -47,7 +47,7 @@ const BUILDINGS: Dictionary = {
 const TECHS: Dictionary = {
 	"archery": {
 		"name":        "Archery",
-		"description": "Add Archer to shop",
+		"description": "Add Bowman to shop",
 		"cost":        10,
 	},
 	"pottery": {
